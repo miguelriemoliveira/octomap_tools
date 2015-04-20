@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+
+
+
+        <node name="rviz" pkg="rviz" type="rviz" args="--display-config $(find world_model_consistency_check)/config/default.rviz" required="true">
+        </node>
+
+
+</launch>

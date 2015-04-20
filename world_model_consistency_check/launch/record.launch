@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<!--    Records raw depth image and RGB image from OpenNI device (kinect).
+The depth image is registered with OpenNI firmware, using default calibration.-->
+
+<launch>
+
+	<!-- Now we record the raw parts to a bag. The bag will be put in your ROS_WORKSPACE, with the openni_record prefix. This is done because I always set the name manually after inspecting the data. To set an exact name rewrite this to use an argument. -->
+    <!--<node pkg="rosbag" type="record" name="record" output="screen" args="/tf /camera/depth_registered/camera_info /camera/depth_registered/image_raw /camera/rgb/camera_info /camera/rgb/image_raw -O /tmp/auto.bag"/>-->
+    <node pkg="rosbag" type="record" name="record" output="screen" args="/tf /kinect/depth_registered/camera_info /kinect/depth_registered/image_raw /kinect/rgb/camera_info /kinect/rgb/image_raw -O /tmp/auto.bag "/>
+
+</launch>
