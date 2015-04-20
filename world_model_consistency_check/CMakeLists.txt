@@ -13,7 +13,6 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   cv_bridge
   image_geometry
-  amazon_msgs
   octomap_msgs
   )
 
