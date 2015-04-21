@@ -23,7 +23,7 @@ OcTree* octree_model;
 
 int main (int argc, char** argv)
 {
-    ros::init(argc, argv, "ot2octomap_msg");
+    ros::init(argc, argv, "file2octomap_msg");
     ros::NodeHandle nh;
 
     std::string input; 
