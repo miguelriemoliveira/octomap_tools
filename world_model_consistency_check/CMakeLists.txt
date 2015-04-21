@@ -130,6 +130,9 @@ target_link_libraries (file2octomap_msg ${PCL_LIBRARIES} ${catkin_LIBRARIES})
 add_executable(octomap_msg2file src/octomap_msg2file.cpp)
 target_link_libraries (octomap_msg2file ${PCL_LIBRARIES} ${catkin_LIBRARIES})
 
+add_executable(pointcloud2file src/pointcloud2file.cpp)
+target_link_libraries (pointcloud2file ${PCL_LIBRARIES} ${catkin_LIBRARIES})
+
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(world_model_consistency_check_node world_model_consistency_check_generate_messages_cpp)
