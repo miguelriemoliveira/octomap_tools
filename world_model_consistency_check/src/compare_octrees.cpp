@@ -37,8 +37,7 @@ void octomapCallbackModel(const octomap_msgs::Octomap::ConstPtr& msg)
     AbstractOcTree* tree = msgToMap(*msg);
     octree_model = dynamic_cast<OcTree*>(tree);
 
-
-    ROS_INFO("\n\nReceived new octree model on topic %s with id: %s, frame_id: %s\n\n.", topic_model.c_str(), msg->id.c_str(), msg->header.frame_id.c_str());
+    ROS_INFO("Received new octree model on topic %s with id: %s, frame_id: %s\n", topic_model.c_str(), msg->id.c_str(), msg->header.frame_id.c_str());
 
     // // int treeDepth = octree_model->getTreeDepth();
     // // ROS_INFO("treeDepth = %d", treeDepth);
@@ -52,11 +51,19 @@ void octomapCallbackTarget(const octomap_msgs::Octomap::ConstPtr& msg)
     AbstractOcTree* tree = msgToMap(*msg);
     octree_target = dynamic_cast<OcTree*>(tree);
 
-    ROS_INFO("\n\nReceived new octree target on topic %s with id: %s, frame_id: %s\n\n.", topic_target.c_str(), msg->id.c_str(), msg->header.frame_id.c_str());
+    ROS_INFO("Received new octree target on topic %s with id: %s, frame_id: %s\n", topic_target.c_str(), msg->id.c_str(), msg->header.frame_id.c_str());
 
     // int treeDepth = octree_target->getTreeDepth();
     // ROS_INFO("treeDepth = %d", treeDepth);
 
+}
+
+
+void compareCallback(const ros::TimerEvent&)
+{
+  ROS_INFO("Compare callback triggered");
+
+    // Checks if the OcTree Model was already received
     if (octree_model == NULL)
     {
         ROS_INFO("OcTree Model Not Found");
@@ -64,11 +71,22 @@ void octomapCallbackTarget(const octomap_msgs::Octomap::ConstPtr& msg)
         return;
     }
 
-    // Bounding Box and Resolution Initialization
+    // Checks if the OcTree Target was already received
+    if (octree_target == NULL)
+    {
+        ROS_INFO("OcTree Target Not Found");
+
+        return;   
+    }
+
+    // Target Bounding Box Initialization
+    point3d minTarget; minTarget.x() = -0.5; minTarget.y() = -0.5; minTarget.z() = 1.5;
+    point3d maxTarget; maxTarget.x() = 0.5;  maxTarget.y() = 0.5;  maxTarget.z() = 2.5;
+
+    // Model Bounding Box Initialization
     point3d min; min.x() = 0; min.y() = 0; min.z() = 0;
     point3d max; max.x() = 0; max.y() = 0; max.z() = 0;
     
-
     // Visualization Message Marker Array
     visualization_msgs::MarkerArray ma;
     int id=0;
@@ -76,7 +94,9 @@ void octomapCallbackTarget(const octomap_msgs::Octomap::ConstPtr& msg)
     ROS_INFO_STREAM("Starting Iteration");
 
     // OcTree Target Iterator
-    for(OcTree::tree_iterator it = octree_target->begin_tree(), end=octree_target->end_tree(); it!= end; ++it)
+    //for(OcTree::tree_iterator it = octree_target->begin_tree(), end=octree_target->end_tree(); it!= end; ++it)
+    // OcTree Target Bounding Box Iterator
+    for(OcTree::leaf_bbx_iterator it = octree_target->begin_leafs_bbx(minTarget,maxTarget), end=octree_target->end_leafs_bbx(); it!= end; ++it)
     {
         // Verifies if the Node exists
         if (octree_target->search(it.getKey()))
@@ -84,7 +104,6 @@ void octomapCallbackTarget(const octomap_msgs::Octomap::ConstPtr& msg)
             // ROS_INFO("Found an known node!");
             
             // Verifies if the Node is occupied
-            //if (it->getValue() > 0)
             if (octree_target->isNodeOccupied(*it))
             {
                 // ROS_INFO("Found an known and occupied node!");
@@ -102,7 +121,6 @@ void octomapCallbackTarget(const octomap_msgs::Octomap::ConstPtr& msg)
                     if (octree_model->search(it_model.getKey()))
                     {
                         // Verifies if the Node is not occupied
-                        //if (it_model->getValue() < 0)
                         if (octree_model->isNodeOccupied(*it_model))
                         {
                             // Draws the Node in the marker array
@@ -143,6 +161,74 @@ void octomapCallbackTarget(const octomap_msgs::Octomap::ConstPtr& msg)
 
 }
 
+
+void squareCallback(const ros::TimerEvent&)
+{
+    ROS_INFO("Square Callback triggered");
+
+    // Visualization Message Marker Array
+    visualization_msgs::MarkerArray ma;
+    int id=0;
+
+    point3d min; min.x() = -0.5; min.y() = -0.5;  min.z() = 1.5;
+    point3d max; max.x() = 0.5;  max.y() = 0.5;  max.z() = 2.5;
+
+    visualization_msgs::Marker m;
+    m.ns = "target_volume";
+    m.header.frame_id = "kinect_rgb_optical_frame";
+    m.header.stamp = ros::Time::now();
+    m.action = visualization_msgs::Marker::ADD;
+    //m.pose.orientation.w = 1.0;
+    m.id = id++;
+    //m.lifetime = 0;
+    m.type = visualization_msgs::Marker::LINE_STRIP;
+    m.scale.x = .005;
+    m.color.r = 1.0;
+    m.color.g = 0.0;
+    m.color.b = 0.0;
+    m.color.a = 1.0;
+    geometry_msgs::Point p1;
+
+    p1.x = min.x(); p1.y=min.y(); p1.z = min.z();
+    m.points.push_back(p1);
+    p1.x = max.x(); p1.y=min.y(); p1.z = min.z();
+    m.points.push_back(p1);
+    p1.x = max.x(); p1.y=max.y(); p1.z =min.z();
+    m.points.push_back(p1);
+    p1.x = min.x(); p1.y=max.y(); p1.z =min.z();
+    m.points.push_back(p1);
+    p1.x = min.x(); p1.y=min.y(); p1.z = min.z();
+    m.points.push_back(p1);
+    p1.x = min.x(); p1.y=min.y(); p1.z = max.z();
+    m.points.push_back(p1);
+    p1.x = max.x(); p1.y=min.y(); p1.z = max.z();
+    m.points.push_back(p1);
+    p1.x = max.x(); p1.y=max.y(); p1.z =max.z();
+    m.points.push_back(p1);
+    p1.x = min.x(); p1.y=max.y(); p1.z =max.z();
+    m.points.push_back(p1);
+    p1.x = min.x(); p1.y=min.y(); p1.z = max.z();
+    m.points.push_back(p1);
+    p1.x = min.x(); p1.y=max.y(); p1.z = max.z();
+    m.points.push_back(p1);
+    p1.x = min.x(); p1.y=max.y(); p1.z = min.z();
+    m.points.push_back(p1);
+    p1.x = max.x(); p1.y=max.y(); p1.z = min.z();
+    m.points.push_back(p1);
+    p1.x = max.x(); p1.y=max.y(); p1.z = max.z();
+    m.points.push_back(p1);
+    p1.x = max.x(); p1.y=min.y(); p1.z = max.z();
+    m.points.push_back(p1);
+    p1.x = max.x(); p1.y=min.y(); p1.z = min.z();
+    m.points.push_back(p1);
+
+    ma.markers.push_back(m);
+
+    marker_pub->publish(ma);
+
+}
+
+
 int main (int argc, char** argv)
 {
     ros::init(argc, argv, "compare_octrees");
@@ -157,8 +243,12 @@ int main (int argc, char** argv)
 
     ros::Duration(1).sleep(); // sleep for a second
 
-    ros::Subscriber sub_model = nh.subscribe(topic_model, 1, octomapCallbackModel);
-    ros::Subscriber sub_target = nh.subscribe(topic_target, 1, octomapCallbackTarget);
+    ros::Subscriber sub_model = nh.subscribe(topic_model, 2, octomapCallbackModel);
+    ros::Subscriber sub_target = nh.subscribe(topic_target, 2, octomapCallbackTarget);
+
+    ros::Timer timer = nh.createTimer(ros::Duration(5), compareCallback);
+
+    // ros::Timer timerSquare = nh.createTimer(ros::Duration(1), squareCallback);    
 
     marker_pub = (boost::shared_ptr<ros::Publisher>) (new ros::Publisher);
     *marker_pub = nh.advertise<visualization_msgs::MarkerArray>("/inconsistencies_arrays", 10);
