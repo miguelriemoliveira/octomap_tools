@@ -1,7 +1,11 @@
 <?xml version="1.0"?>
 <launch>
 
+<<<<<<< HEAD
     <node name="rosrun" pkg="world_model_consistency_check" type="file2octomap_msg" args="_input:=/stamina/empty3.ot _output:=/octomap_model" required="true">
+=======
+    <node name="rosrun" pkg="world_model_consistency_check" type="file2octomap_msg" args="_input:=~/bagfiles/stamina/empty3.ot _output:=/octomap_model" required="true">
+>>>>>>> 3cf9b0d302791d637b5b2675c7250d9f7a30c32e
     </node>
 
 </launch>
