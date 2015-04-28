@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   image_geometry
   octomap_msgs
+  dynamic_reconfigure
   )
 
 
@@ -86,6 +87,14 @@ add_definitions(${PCL_DEFINITIONS})
 #   std_msgs  # Or other packages containing msgs
 # )
 
+
+#add dynamic reconfigure api
+generate_dynamic_reconfigure_options(
+    cfg/DepthConfiguration.cfg
+)
+
+# make sure configure headers are built before any node using them
+
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -123,6 +132,7 @@ target_link_libraries (test_unknown_space ${PCL_LIBRARIES} ${catkin_LIBRARIES})
 
 add_executable(compare_octrees src/compare_octrees.cpp)
 target_link_libraries (compare_octrees ${PCL_LIBRARIES} ${catkin_LIBRARIES})
+add_dependencies(compare_octrees ${PROJECT_NAME}_gencfg)
 
 add_executable(file2octomap_msg src/file2octomap_msg.cpp)
 target_link_libraries (file2octomap_msg ${PCL_LIBRARIES} ${catkin_LIBRARIES})

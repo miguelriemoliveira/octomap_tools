@@ -14,12 +14,117 @@
 #include <pcl_ros/point_cloud.h>
 #include <visualization_msgs/MarkerArray.h>
 
+#include <dynamic_reconfigure/server.h>
+#include <world_model_consistency_check/DepthConfigurationConfig.h>
+
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 using namespace std;
 using namespace octomap;
 using namespace octomap_msgs;
 using namespace sensor_msgs;
+
+/**
+ * @brief Defines a cubic volume that we can use to limit an octree search
+ */
+class ClassBoundingBox
+{
+    public:
+
+        ClassBoundingBox(double min_x, double max_x, double min_y, double max_y, double min_z, double max_z)
+        {
+            _min_x = min_x; _max_x = max_x;
+            _min_y = min_y; _max_y = max_y;
+            _min_z = min_z; _max_z = max_z;
+        };
+
+        ClassBoundingBox(double center_x, double center_y, double center_z, double size)
+        {
+            double s2 = size/2;
+            _min_x = center_x - s2; _max_x = center_x + s2;
+            _min_y = center_y - s2; _max_y = center_y + s2;
+            _min_z = center_z - s2; _max_z = center_z + s2;
+        };
+
+
+        ~ClassBoundingBox(){};
+
+        point3d getMinimumPoint(void){point3d p; p.x() = _min_x; p.y() = _min_y; p.z() = _min_z; return p;};
+        point3d getMaximumPoint(void){point3d p; p.x() = _max_x; p.y() = _max_y; p.z() = _max_z; return p;};
+
+        void getEdgesToDraw(std::vector<geometry_msgs::Point>& l)
+        {
+            geometry_msgs::Point p;
+            p.x = _min_x; p.y=_min_y; p.z = _min_z; l.push_back(p);
+            p.x = _max_x; p.y=_min_y; p.z = _min_z; l.push_back(p);
+            p.x = _max_x; p.y=_max_y; p.z = _min_z; l.push_back(p);
+            p.x = _min_x; p.y=_max_y; p.z = _min_z; l.push_back(p);
+            p.x = _min_x; p.y=_min_y; p.z = _min_z; l.push_back(p);
+            p.x = _min_x; p.y=_min_y; p.z = _max_z; l.push_back(p);
+            p.x = _max_x; p.y=_min_y; p.z = _max_z; l.push_back(p);
+            p.x = _max_x; p.y=_max_y; p.z = _max_z; l.push_back(p);
+            p.x = _min_x; p.y=_max_y; p.z = _max_z; l.push_back(p);
+            p.x = _min_x; p.y=_min_y; p.z = _max_z; l.push_back(p);
+            p.x = _min_x; p.y=_max_y; p.z = _max_z; l.push_back(p);
+            p.x = _min_x; p.y=_max_y; p.z = _min_z; l.push_back(p);
+            p.x = _max_x; p.y=_max_y; p.z = _min_z; l.push_back(p);
+            p.x = _max_x; p.y=_max_y; p.z = _max_z; l.push_back(p);
+            p.x = _max_x; p.y=_min_y; p.z = _max_z; l.push_back(p);
+            p.x = _max_x; p.y=_min_y; p.z = _min_z; l.push_back(p);
+        }
+
+        visualization_msgs::Marker createMarker(std::string ns, std::string frame_id, std_msgs::ColorRGBA color, int id)
+        {
+            visualization_msgs::Marker m;
+            m.ns = ns;
+            m.header.frame_id = frame_id;
+            m.header.stamp = ros::Time::now();
+            m.action = visualization_msgs::Marker::ADD;
+            m.id = id;
+            m.color = color;
+            return m;
+        }
+
+
+        visualization_msgs::Marker getMarkerWithEdges(std::string ns, std::string frame_id, std_msgs::ColorRGBA color, int id)
+        {
+            visualization_msgs::Marker m = createMarker(ns, frame_id, color, id);
+            m.type = visualization_msgs::Marker::LINE_STRIP;
+            m.scale.x = 0.002;
+            getEdgesToDraw(m.points);
+            return m;
+        }
+
+        visualization_msgs::Marker getMarkerCubeVolume(std::string ns, std::string frame_id, std_msgs::ColorRGBA color, int id)
+        {
+
+            visualization_msgs::Marker m = createMarker(ns, frame_id, color, id);
+            m.type = visualization_msgs::Marker::CUBE;
+            double size = _max_x - _min_x;
+            m.scale.x = m.scale.y = m.scale.z = size;
+            m.pose.position.x = (_max_x + _min_x)/2;
+            m.pose.position.y = (_max_y + _min_y)/2;
+            m.pose.position.z = (_max_z + _min_z)/2;
+            return m;
+        }
+
+
+    protected:
+
+        double _min_x;
+        double _max_x;
+        double _min_y;
+        double _max_y;
+        double _min_z;
+        double _max_z;
+};
+
+
+/* _________________________________
+  |                                 |
+  |        GLOBAL VARIABLES         |
+  |_________________________________| */
+
 
 boost::shared_ptr<ros::Publisher> pub;
 boost::shared_ptr<ros::Publisher> marker_pub;
@@ -30,10 +135,13 @@ OcTree* octree_target = NULL;
 std::string topic_model = "/octomap_full";
 std::string topic_target = "/output";
 
+unsigned char depth = 16;
+
+//Declare a ClassBoundingBox which defines the target_volume
+ClassBoundingBox target_volume(-0.42, 0.42, -0.42, 0.42, 0.2, 3.0);
 
 void octomapCallbackModel(const octomap_msgs::Octomap::ConstPtr& msg)
 {
-
     AbstractOcTree* tree = msgToMap(*msg);
     octree_model = dynamic_cast<OcTree*>(tree);
 
@@ -41,13 +149,35 @@ void octomapCallbackModel(const octomap_msgs::Octomap::ConstPtr& msg)
 
     // // int treeDepth = octree_model->getTreeDepth();
     // // ROS_INFO("treeDepth = %d", treeDepth);
-    
 }
+
+//visualization_msgs::Marker createCubeMarker(point3d center, double size, std::string ns, std::string frame_id, std_msgs::ColorRGBA color)
+//{
+    //static int id=7777;
+
+    //visualization_msgs::Marker m;
+    //m.ns = ns;
+    //m.header.frame_id = frame_id;
+    //m.header.stamp = ros::Time::now();
+    //m.action = visualization_msgs::Marker::ADD;
+    ////m.pose.orientation.w = 1.0;
+    //m.id = id++;
+    ////m.lifetime = 0;
+    //m.type = visualization_msgs::Marker::CUBE;
+    //m.scale.x = size;
+    //m.scale.y = size;
+    //m.scale.z = size;
+
+    //m.pose.position.x = center.x();
+    //m.pose.position.y = center.y();
+    //m.pose.position.z = center.z();
+    //m.color = color;
+    //return m;
+//}
 
 
 void octomapCallbackTarget(const octomap_msgs::Octomap::ConstPtr& msg)
 {
-
     AbstractOcTree* tree = msgToMap(*msg);
     octree_target = dynamic_cast<OcTree*>(tree);
 
@@ -61,13 +191,16 @@ void octomapCallbackTarget(const octomap_msgs::Octomap::ConstPtr& msg)
 
 void compareCallback(const ros::TimerEvent&)
 {
-  ROS_INFO("Compare callback triggered");
+    ros::Time t= ros::Time::now();
+
+    ROS_INFO("Compare callback triggered");
+
+
 
     // Checks if the OcTree Model was already received
     if (octree_model == NULL)
     {
         ROS_INFO("OcTree Model Not Found");
-
         return;
     }
 
@@ -75,83 +208,70 @@ void compareCallback(const ros::TimerEvent&)
     if (octree_target == NULL)
     {
         ROS_INFO("OcTree Target Not Found");
-
         return;   
     }
 
-    // Target Bounding Box Initialization
-    point3d minTarget; minTarget.x() = -0.5; minTarget.y() = -0.5; minTarget.z() = 1.5;
-    point3d maxTarget; maxTarget.x() = 0.5;  maxTarget.y() = 0.5;  maxTarget.z() = 2.5;
-
-    // Model Bounding Box Initialization
-    point3d min; min.x() = 0; min.y() = 0; min.z() = 0;
-    point3d max; max.x() = 0; max.y() = 0; max.z() = 0;
-    
     // Visualization Message Marker Array
     visualization_msgs::MarkerArray ma;
-    int id=0;
+    unsigned int id=0;
+    std_msgs::ColorRGBA color_occupied;
+    color_occupied.r = 0; color_occupied.g = 0; color_occupied.b = 0.5; color_occupied.a = .8;
+    std_msgs::ColorRGBA color_inconsistent;
+    color_inconsistent.r = .5; color_inconsistent.g = 0; color_inconsistent.b = 0; color_inconsistent.a = .8;
+    std_msgs::ColorRGBA color_target_volume;
+    color_target_volume.r = .5; color_target_volume.g = 0.5; color_target_volume.b = 0; color_target_volume.a = 1;
+
+    std::vector<ClassBoundingBox> v_inconsistencies;
+
+
+    ma.markers.push_back(target_volume.getMarkerWithEdges("target_volume", "kinect_rgb_optical_frame", color_target_volume, ++id));
+
+
 
     ROS_INFO_STREAM("Starting Iteration");
 
-    // OcTree Target Iterator
-    //for(OcTree::tree_iterator it = octree_target->begin_tree(), end=octree_target->end_tree(); it!= end; ++it)
-    // OcTree Target Bounding Box Iterator
-    for(OcTree::leaf_bbx_iterator it = octree_target->begin_leafs_bbx(minTarget,maxTarget), end=octree_target->end_leafs_bbx(); it!= end; ++it)
+    // -------------------------------------------------------------
+    // ----------- Iterate over target octree ----------------------
+    // -------------------------------------------------------------
+    for(OcTree::leaf_bbx_iterator it = octree_target->begin_leafs_bbx(target_volume.getMinimumPoint(), target_volume.getMaximumPoint(), depth), end=octree_target->end_leafs_bbx(); it!= end; ++it)
     {
-        // Verifies if the Node exists
-        if (octree_target->search(it.getKey()))
+        if (octree_target->search(it.getKey())) // Verifies if the node exists
         {
-            // ROS_INFO("Found an known node!");
-            
-            // Verifies if the Node is occupied
-            if (octree_target->isNodeOccupied(*it))
+            if (octree_target->isNodeOccupied(*it)) // Verifies if the Node is occupied
             {
-                // ROS_INFO("Found an known and occupied node!");
-                // cout << "Found a know Node with value: " << it->getValue() << endl;
+                //ROS_INFO("Found an known and occupied node!");
+                ClassBoundingBox target_cell(it.getX(), it.getY(), it.getZ(), it.getSize());
+                ma.markers.push_back(target_cell.getMarkerWithEdges("target_occupied", "kinect_rgb_optical_frame", color_occupied, ++id));
 
-                // Defines Bounding Box
-                double resolution = it.getSize();
-                min.x() = it.getX()-resolution; min.y() = it.getY()-resolution; min.z() = it.getZ()-resolution;
-                max.x() = it.getX()+resolution; max.y() = it.getY()+resolution; max.z() = it.getZ()+resolution;
+                bool flg_found_occupied = false;
 
-                // OcTree Model Iterator with Bounding Box
-                for(OcTree::leaf_bbx_iterator it_model = octree_model->begin_leafs_bbx(min,max), end=octree_model->end_leafs_bbx(); it_model!= end; ++it_model)
+                // -------------------------------------------------------------
+                // ----------- Iterate over model octree ----------------------
+                // -------------------------------------------------------------
+                for(OcTree::leaf_bbx_iterator it_model = octree_model->begin_leafs_bbx(target_cell.getMinimumPoint(),target_cell.getMaximumPoint(), depth), end=octree_model->end_leafs_bbx(); it_model!= end; ++it_model)
                 {
-                    // Verifies if the Nodes exists
-                    if (octree_model->search(it_model.getKey()))
+                    if (octree_model->search(it_model.getKey())) // Verifies if the nodes exists
                     {
-                        // Verifies if the Node is not occupied
-                        if (octree_model->isNodeOccupied(*it_model))
+                        if (!octree_model->isNodeOccupied(*it_model)) // Verifies if the node is free
                         {
-                            // Draws the Node in the marker array
-                            visualization_msgs::Marker m;
+                            //Do something here - Draw node, etc
+                            //ClassBoundingBox inconsistent_volume(it_model.getX(), it_model.getY(), it_model.getZ(), it_model.getSize());
+                            //inconsistent_volume.getEdgesToDraw(m.points);
+                            //ma.markers.push_back(m);
 
                             //ROS_INFO_STREAM("found!");
-
-                            m.ns = "boxes";
-                            m.header.frame_id = "kinect_rgb_optical_frame";
-                            m.header.stamp = ros::Time::now();
-                            m.action = visualization_msgs::Marker::ADD;
-                            //m.pose.orientation.w = 1.0;
-                            m.id = id++;
-                            //m.lifetime = 0;
-                            m.type = visualization_msgs::Marker::CUBE;
-                            m.scale.x = it.getSize();
-                            m.scale.y = it.getSize();
-                            m.scale.z = it.getSize();
-
-                            m.pose.position.x = it.getX();
-                            m.pose.position.y = it.getY();
-                            m.pose.position.z = it.getZ();
-                            m.color.r = 0.0;
-                            m.color.g = 1.0;
-                            m.color.b = 1.0;
-                            m.color.a = 0.9;
-
-                            ma.markers.push_back(m);
-
+                        }
+                        else
+                        {
+                            flg_found_occupied = true;
                         }
                     }
+                }
+
+                if (flg_found_occupied == false) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
+                {
+                    v_inconsistencies.push_back(target_cell);
+                    ma.markers.push_back(target_cell.getMarkerCubeVolume("target_inconsistent", "kinect_rgb_optical_frame", color_inconsistent, ++id));
                 }
             }
         }
@@ -159,80 +279,48 @@ void compareCallback(const ros::TimerEvent&)
 
     marker_pub->publish(ma);
 
+
+    //Do your stuff
+
+    ROS_INFO("Inconsistencies vecotr har %ld cells", v_inconsistencies.size());
+
+    ros::Duration d = (ros::Time::now() - t);
+    ROS_INFO("Comparisson took %f secs", d.toSec());
 }
 
 
-void squareCallback(const ros::TimerEvent&)
+void callbackDynamicReconfigure(world_model_consistency_check::DepthConfigurationConfig &config, uint32_t level) 
 {
-    ROS_INFO("Square Callback triggered");
-
-    // Visualization Message Marker Array
-    visualization_msgs::MarkerArray ma;
-    int id=0;
-
-    point3d min; min.x() = -0.5; min.y() = -0.5;  min.z() = 1.5;
-    point3d max; max.x() = 0.5;  max.y() = 0.5;  max.z() = 2.5;
-
-    visualization_msgs::Marker m;
-    m.ns = "target_volume";
-    m.header.frame_id = "kinect_rgb_optical_frame";
-    m.header.stamp = ros::Time::now();
-    m.action = visualization_msgs::Marker::ADD;
-    //m.pose.orientation.w = 1.0;
-    m.id = id++;
-    //m.lifetime = 0;
-    m.type = visualization_msgs::Marker::LINE_STRIP;
-    m.scale.x = .005;
-    m.color.r = 1.0;
-    m.color.g = 0.0;
-    m.color.b = 0.0;
-    m.color.a = 1.0;
-    geometry_msgs::Point p1;
-
-    p1.x = min.x(); p1.y=min.y(); p1.z = min.z();
-    m.points.push_back(p1);
-    p1.x = max.x(); p1.y=min.y(); p1.z = min.z();
-    m.points.push_back(p1);
-    p1.x = max.x(); p1.y=max.y(); p1.z =min.z();
-    m.points.push_back(p1);
-    p1.x = min.x(); p1.y=max.y(); p1.z =min.z();
-    m.points.push_back(p1);
-    p1.x = min.x(); p1.y=min.y(); p1.z = min.z();
-    m.points.push_back(p1);
-    p1.x = min.x(); p1.y=min.y(); p1.z = max.z();
-    m.points.push_back(p1);
-    p1.x = max.x(); p1.y=min.y(); p1.z = max.z();
-    m.points.push_back(p1);
-    p1.x = max.x(); p1.y=max.y(); p1.z =max.z();
-    m.points.push_back(p1);
-    p1.x = min.x(); p1.y=max.y(); p1.z =max.z();
-    m.points.push_back(p1);
-    p1.x = min.x(); p1.y=min.y(); p1.z = max.z();
-    m.points.push_back(p1);
-    p1.x = min.x(); p1.y=max.y(); p1.z = max.z();
-    m.points.push_back(p1);
-    p1.x = min.x(); p1.y=max.y(); p1.z = min.z();
-    m.points.push_back(p1);
-    p1.x = max.x(); p1.y=max.y(); p1.z = min.z();
-    m.points.push_back(p1);
-    p1.x = max.x(); p1.y=max.y(); p1.z = max.z();
-    m.points.push_back(p1);
-    p1.x = max.x(); p1.y=min.y(); p1.z = max.z();
-    m.points.push_back(p1);
-    p1.x = max.x(); p1.y=min.y(); p1.z = min.z();
-    m.points.push_back(p1);
-
-    ma.markers.push_back(m);
-
-    marker_pub->publish(ma);
-
+    ROS_INFO("Reconfigure Request: Setting comparison depth to %d",  config.depth);
+    depth = (unsigned char) config.depth;
 }
-
 
 int main (int argc, char** argv)
 {
     ros::init(argc, argv, "compare_octrees");
     ros::NodeHandle nh;
+
+    //The c way
+    //int v[20];
+    //int* v;
+    //v = malloc(sizeof(int) *200);
+    //v[0] = 20;
+    //...
+
+    //v[201] = 21; --> segmentation fault
+
+
+    //free(v);
+
+    ////The c++ way
+    //std::vector<int> v;
+    //v.push_back(20)
+        //...
+    //v.push_back(21)
+
+    //std::vector<ClassBoundingBox> v;
+
+    //return 1;
 
     // Use: _topic_model:=/topic_model  and  _topic_target:=/topic_target
     ros::param::get("~topic_model", topic_model);
@@ -241,14 +329,19 @@ int main (int argc, char** argv)
     //Problem linking? check http://answers.ros.org/question/196935/roslib-reference-error/
     //string path = ros::package::getPath("amazon_object_segmentation");
 
+    //Setup the depth online configuration
+    dynamic_reconfigure::Server<world_model_consistency_check::DepthConfigurationConfig> server;
+    dynamic_reconfigure::Server<world_model_consistency_check::DepthConfigurationConfig>::CallbackType f;
+    f = boost::bind(&callbackDynamicReconfigure, _1, _2);
+    server.setCallback(f);
+
+
     ros::Duration(1).sleep(); // sleep for a second
 
     ros::Subscriber sub_model = nh.subscribe(topic_model, 2, octomapCallbackModel);
     ros::Subscriber sub_target = nh.subscribe(topic_target, 2, octomapCallbackTarget);
 
-    ros::Timer timer = nh.createTimer(ros::Duration(5), compareCallback);
-
-    // ros::Timer timerSquare = nh.createTimer(ros::Duration(1), squareCallback);    
+    ros::Timer timer = nh.createTimer(ros::Duration(2), compareCallback);
 
     marker_pub = (boost::shared_ptr<ros::Publisher>) (new ros::Publisher);
     *marker_pub = nh.advertise<visualization_msgs::MarkerArray>("/inconsistencies_arrays", 10);
