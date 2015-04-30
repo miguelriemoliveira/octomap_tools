@@ -24,10 +24,11 @@ using namespace octomap;
 using namespace octomap_msgs;
 using namespace sensor_msgs;
 
+
+
 /**
  * @brief Defines a cubic volume that we can use to limit an octree search
  */
-
 class ClassBoundingBox
 {
     public:
@@ -109,7 +110,16 @@ class ClassBoundingBox
             return m;
         }
 
+        double getSize(void) {return _max_x - _min_x;};
 
+        point3d getCenter(void) 
+        {
+            point3d p; 
+            p.x() = (_max_x + _min_x)/2;
+            p.y() = (_max_y + _min_y)/2;
+            p.z() = (_max_z + _min_z)/2;
+            return p;
+        }
 
 
     protected:
@@ -134,10 +144,46 @@ class ClassBoundingBox
 //         }
 
 
+bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2)
+{
+    double cx1 = b1.getCenter().x();
+    double cy1 = b1.getCenter().y();
+    double cz1 = b1.getCenter().z();
+
+    double cx2 = b2.getCenter().x();
+    double cy2 = b2.getCenter().y();
+    double cz2 = b2.getCenter().z();
+
+    double dist = sqrt((cx1-cx2)*(cx1-cx2) + (cy1-cy2)*(cy1-cy2) + (cz1-cz2)*(cz1-cz2));
+
+    double mx1 =  b1.getMinimumPoint().x();
+    double my1 =  b1.getMinimumPoint().y();
+    double mz1 =  b1.getMinimumPoint().z();
+    double s1 = sqrt( (cx1 - mx1) * (cx1 - mx1) + (cy1 - my1) * (cy1 - my1) + (cz1 - mz1) * (cz1 - mz1));
+
+    double mx2 =  b2.getMinimumPoint().x();
+    double my2 =  b2.getMinimumPoint().y();
+    double mz2 =  b2.getMinimumPoint().z();
+    double s2 = sqrt( (cx2 - mx2) * (cx2 - mx2) + (cy2 - my2) * (cy2 - my2) + (cz2 - mz2) * (cz2 - mz2));
+
+
+    
+    //ROS_INFO("dx=%f dy=%f dz=%f", dx,dy,dz);
+    //ROS_INFO("dist=%f", dist);
+    //ROS_INFO("size_sum=%f", size_sum);
+    //if (dist <= size_sum*50000000000)
+    if (dist <= (s1 + s2))
+        return true;
+    else
+        return false;
+}
+
+
+
 /* _________________________________
-  |                                 |
-  |        GLOBAL VARIABLES         |
-  |_________________________________| */
+   |                                 |
+   |        GLOBAL VARIABLES         |
+   |_________________________________| */
 
 
 boost::shared_ptr<ros::Publisher> pub;
@@ -149,7 +195,7 @@ OcTree* octree_target = NULL;
 std::string topic_model = "/octomap_full";
 std::string topic_target = "/output";
 
-unsigned char depth = 16;
+unsigned char depth = 13;
 
 //Declare a ClassBoundingBox which defines the target_volume
 ClassBoundingBox target_volume(-0.42, 0.42, -0.42, 0.42, 0.2, 3.0);
@@ -167,26 +213,26 @@ void octomapCallbackModel(const octomap_msgs::Octomap::ConstPtr& msg)
 
 //visualization_msgs::Marker createCubeMarker(point3d center, double size, std::string ns, std::string frame_id, std_msgs::ColorRGBA color)
 //{
-    //static int id=7777;
+//static int id=7777;
 
-    //visualization_msgs::Marker m;
-    //m.ns = ns;
-    //m.header.frame_id = frame_id;
-    //m.header.stamp = ros::Time::now();
-    //m.action = visualization_msgs::Marker::ADD;
-    ////m.pose.orientation.w = 1.0;
-    //m.id = id++;
-    ////m.lifetime = 0;
-    //m.type = visualization_msgs::Marker::CUBE;
-    //m.scale.x = size;
-    //m.scale.y = size;
-    //m.scale.z = size;
+//visualization_msgs::Marker m;
+//m.ns = ns;
+//m.header.frame_id = frame_id;
+//m.header.stamp = ros::Time::now();
+//m.action = visualization_msgs::Marker::ADD;
+////m.pose.orientation.w = 1.0;
+//m.id = id++;
+////m.lifetime = 0;
+//m.type = visualization_msgs::Marker::CUBE;
+//m.scale.x = size;
+//m.scale.y = size;
+//m.scale.z = size;
 
-    //m.pose.position.x = center.x();
-    //m.pose.position.y = center.y();
-    //m.pose.position.z = center.z();
-    //m.color = color;
-    //return m;
+//m.pose.position.x = center.x();
+//m.pose.position.y = center.y();
+//m.pose.position.z = center.z();
+//m.color = color;
+//return m;
 //}
 
 
@@ -236,7 +282,7 @@ void compareCallback(const ros::TimerEvent&)
     color_target_volume.r = .5; color_target_volume.g = 0.5; color_target_volume.b = 0; color_target_volume.a = 1;
 
     // Vector of Inconsistencies initialization
-    std::vector<ClassBoundingBox> v_inconsistencies;
+    std::vector<ClassBoundingBox> vi;
 
     // Creates the target volume message array
     ma.markers.push_back(target_volume.getMarkerWithEdges("target_volume", "kinect_rgb_optical_frame", color_target_volume, ++id));
@@ -285,7 +331,7 @@ void compareCallback(const ros::TimerEvent&)
                 if (flg_found_occupied == false) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
                 {
                     // Add the inconsistency cell into a vector
-                    v_inconsistencies.push_back(target_cell);
+                    vi.push_back(target_cell);
 
                     ma.markers.push_back(target_cell.getMarkerCubeVolume("target_inconsistent", "kinect_rgb_optical_frame", color_inconsistent, ++id));
                 }
@@ -295,85 +341,154 @@ void compareCallback(const ros::TimerEvent&)
 
     marker_pub->publish(ma);
 
-    // ----------------------------------------------------
-    // --------- Euclidean Cluster Extraction -------------
-    // ----------------------------------------------------
 
-    // Create empty list of clusters
-    // std::vector<std::vector<ClassBoundingBox *>> v_v_cluster;
-    std::vector< std::vector<ClassBoundingBox> > v_v_cluster; 
-    
-    // Create queue of cells that need to be checked
-    std::vector<ClassBoundingBox> v_toCheck;
-
-    
-    // For every cell in the dataset that is not part of a cluster already, 
-    // add the cell to the queue of cells that need to be checked.
-    
-    // Initializes the Iterator to the dataset
-    for (std::vector<ClassBoundingBox>::iterator i = v_inconsistencies.begin(); i != v_inconsistencies.end(); i++)
+    vector<size_t> queue;
+    for (size_t i=0; i != vi.size(); ++i)
     {
-        // Tests if the cell is already part of a cluster.
-        if (true)
-        {
-            // If it is, jumps out of the cycle, because the cell is already in a cluster.
-        }
-        
-        else
-        {
-            // Adds the cell to the vector of cells that need to be checked.
-            v_toCheck.push_back((*i));
+        queue.push_back(i);
+    }
 
-            // For every cell in the queue of cells that need to be checked:
-            for (std::vector<ClassBoundingBox>::iterator iq = v_toCheck.begin(); iq != v_toCheck.end(); iq++)
+    vector< vector<size_t> > cluster; 
+
+
+    while (queue.size() != 0)
+    {
+        //Select new seed
+        size_t seed = queue[0]; 
+        queue.erase(queue.begin() + 0); //remove first element
+
+
+        //Create new cluster
+        vector<size_t> tmp;
+        cluster.push_back(tmp);
+
+        ROS_INFO("Created cluster %ld ", cluster.size());
+
+        //Expand seed
+        vector <size_t> flood;
+        flood.push_back(seed);
+
+
+        while (flood.size() != 0)
+        {
+
+            //ROS_INFO("Expanding first elem of flood (size %ld) idx = %ld", flood.size(), flood[0]);
+            //expand flood[j]
+            size_t idx_b1 = flood[0];
+
+
+            //ROS_INFO("Checking of queue size %ld", queue.size());
+            for (size_t j=0; j < queue.size(); ++j) 
             {
-                // Serch for cells in the Neighbourhood
-                // If there are cells in the Neighbourhood,
-                // Test if the are already not part of the queue of points that needs to be checked.
-                
-                // if( std::find(v_toCheck.begin(), v_toCheck.end(), (*iq) ) != v_toCheck.end() ) 
-                // {
-                //     // v contains x 
-                // } 
+                size_t idx_b2 = queue[j]; 
 
-                // else 
-                // {
-                //     // v does not contain x
-                // }
+                //ROS_INFO("Checking idx_b1 %ld idx_b2 %ld", idx_b1, idx_b2);
 
 
-                // If they are not,  add then to the list of points that needs to be checked.
+        //char name[50];
+        //cout << "press a key to continue";
+        //cin >> name;
 
+                if (are_neighbors(vi[idx_b1], vi[idx_b2]))
+                {
+                    //ROS_INFO("Found neighbor idx %ld", idx_b2);
+                    flood.push_back(idx_b2);
+                    queue.erase(queue.begin() + j);
+                    //TODO should be b2 or b1?
+
+                }
+                else
+                {
+                    //nothing to do 
+                }
             }
 
-            // When every point of the "to check" dataset is checked, add then to the cluster list and clean it.
-            // Draw the data cells to be visualized
- 
+
+            //remove seed from flood
+            flood.erase(flood.begin() + 0);
+
+            //add seed to cluster
+            cluster.at(cluster.size()-1).push_back(seed); //add seed point to cluster
         }
 
 
-
-            
-                
-
-
-        
-
-
-
-
-
-
+        ROS_INFO("Created cluster %ld with %ld points", cluster.size(), cluster[cluster.size()-1].size());
 
 
 
     }
 
+        //char name[50];
+        //cout << "press a key to continue";
+        //cin >> name;
+
+
+    ROS_INFO("Number of clusters found %ld", cluster.size());
+
+
+    // ----------------------------------------------------
+    // --------- Euclidean Cluster Extraction (RAFAEL) _---
+    // ----------------------------------------------------
+
+
+    // Create empty list of clusters
+    // std::vector<std::vector<ClassBoundingBox *>> v_v_cluster;
+    //std::vector< std::vector<ClassBoundingBox> > v_v_cluster; 
+
+    //// Create queue of cells that need to be checked
+    //std::vector<ClassBoundingBox> v_toCheck;
+
+
+    //// For every cell in the dataset that is not part of a cluster already, 
+    //// add the cell to the queue of cells that need to be checked.
+
+    //// Initializes the Iterator to the dataset
+    //for (std::vector<ClassBoundingBox>::iterator i = vi.begin(); i != vi.end(); i++)
+    //{
+    //// Tests if the cell is already part of a cluster.
+    //if (true)
+    //{
+    //// If it is, jumps out of the cycle, because the cell is already in a cluster.
+    //}
+
+    //else
+    //{
+    //// Adds the cell to the vector of cells that need to be checked.
+    //v_toCheck.push_back((*i));
+
+    //// For every cell in the queue of cells that need to be checked:
+    //for (std::vector<ClassBoundingBox>::iterator iq = v_toCheck.begin(); iq != v_toCheck.end(); iq++)
+    //{
+    //// Serch for cells in the Neighbourhood
+    //// If there are cells in the Neighbourhood,
+    //// Test if the are already not part of the queue of points that needs to be checked.
+
+    //// if( std::find(v_toCheck.begin(), v_toCheck.end(), (*iq) ) != v_toCheck.end() ) 
+    //// {
+    ////     // v contains x 
+    //// } 
+
+    //// else 
+    //// {
+    ////     // v does not contain x
+    //// }
+
+
+    //// If they are not,  add then to the list of points that needs to be checked.
+
+    //}
+
+    //// When every point of the "to check" dataset is checked, add then to the cluster list and clean it.
+    //// Draw the data cells to be visualized
+
+    //}
+    //}
 
 
 
 
-    ROS_INFO("Inconsistencies vecotr har %ld cells", v_inconsistencies.size());
+
+    ROS_INFO("Inconsistencies vecotr har %ld cells", vi.size());
 
     ros::Duration d = (ros::Time::now() - t);
     ROS_INFO("Comparisson took %f secs", d.toSec());
@@ -406,7 +521,7 @@ int main (int argc, char** argv)
     ////The c++ way
     //std::vector<int> v;
     //v.push_back(20)
-        //...
+    //...
     //v.push_back(21)
 
     //std::vector<ClassBoundingBox> v;
