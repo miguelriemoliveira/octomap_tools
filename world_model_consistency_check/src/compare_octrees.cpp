@@ -27,6 +27,7 @@ using namespace sensor_msgs;
 /**
  * @brief Defines a cubic volume that we can use to limit an octree search
  */
+
 class ClassBoundingBox
 {
     public:
@@ -109,6 +110,8 @@ class ClassBoundingBox
         }
 
 
+
+
     protected:
 
         double _min_x;
@@ -118,6 +121,17 @@ class ClassBoundingBox
         double _min_z;
         double _max_z;
 };
+
+// bool operator==(const ClassBoundingBox& lhs, const ClassBoundingBox& rhs) const
+//         { 
+//             if ( rhs.getMinimumPoint() == lhs.getMinimumPoint() )
+//             {
+//                 return true; 
+//             }
+
+//             return false;
+
+//         }
 
 
 /* _________________________________
@@ -148,7 +162,7 @@ void octomapCallbackModel(const octomap_msgs::Octomap::ConstPtr& msg)
     ROS_INFO("Received new octree model on topic %s with id: %s, frame_id: %s\n", topic_model.c_str(), msg->id.c_str(), msg->header.frame_id.c_str());
 
     // // int treeDepth = octree_model->getTreeDepth();
-    // // ROS_INFO("treeDepth = %d", treeDepth);
+    // // ROS_INFO("treeDepth = %d", treeDepth); 
 }
 
 //visualization_msgs::Marker createCubeMarker(point3d center, double size, std::string ns, std::string frame_id, std_msgs::ColorRGBA color)
@@ -195,8 +209,6 @@ void compareCallback(const ros::TimerEvent&)
 
     ROS_INFO("Compare callback triggered");
 
-
-
     // Checks if the OcTree Model was already received
     if (octree_model == NULL)
     {
@@ -214,6 +226,8 @@ void compareCallback(const ros::TimerEvent&)
     // Visualization Message Marker Array
     visualization_msgs::MarkerArray ma;
     unsigned int id=0;
+
+    // Color initialization
     std_msgs::ColorRGBA color_occupied;
     color_occupied.r = 0; color_occupied.g = 0; color_occupied.b = 0.5; color_occupied.a = .8;
     std_msgs::ColorRGBA color_inconsistent;
@@ -221,11 +235,11 @@ void compareCallback(const ros::TimerEvent&)
     std_msgs::ColorRGBA color_target_volume;
     color_target_volume.r = .5; color_target_volume.g = 0.5; color_target_volume.b = 0; color_target_volume.a = 1;
 
+    // Vector of Inconsistencies initialization
     std::vector<ClassBoundingBox> v_inconsistencies;
 
-
+    // Creates the target volume message array
     ma.markers.push_back(target_volume.getMarkerWithEdges("target_volume", "kinect_rgb_optical_frame", color_target_volume, ++id));
-
 
 
     ROS_INFO_STREAM("Starting Iteration");
@@ -270,7 +284,9 @@ void compareCallback(const ros::TimerEvent&)
 
                 if (flg_found_occupied == false) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
                 {
+                    // Add the inconsistency cell into a vector
                     v_inconsistencies.push_back(target_cell);
+
                     ma.markers.push_back(target_cell.getMarkerCubeVolume("target_inconsistent", "kinect_rgb_optical_frame", color_inconsistent, ++id));
                 }
             }
@@ -279,8 +295,83 @@ void compareCallback(const ros::TimerEvent&)
 
     marker_pub->publish(ma);
 
+    // ----------------------------------------------------
+    // --------- Euclidean Cluster Extraction -------------
+    // ----------------------------------------------------
 
-    //Do your stuff
+    // Create empty list of clusters
+    // std::vector<std::vector<ClassBoundingBox *>> v_v_cluster;
+    std::vector< std::vector<ClassBoundingBox> > v_v_cluster; 
+    
+    // Create queue of cells that need to be checked
+    std::vector<ClassBoundingBox> v_toCheck;
+
+    
+    // For every cell in the dataset that is not part of a cluster already, 
+    // add the cell to the queue of cells that need to be checked.
+    
+    // Initializes the Iterator to the dataset
+    for (std::vector<ClassBoundingBox>::iterator i = v_inconsistencies.begin(); i != v_inconsistencies.end(); i++)
+    {
+        // Tests if the cell is already part of a cluster.
+        if (true)
+        {
+            // If it is, jumps out of the cycle, because the cell is already in a cluster.
+        }
+        
+        else
+        {
+            // Adds the cell to the vector of cells that need to be checked.
+            v_toCheck.push_back((*i));
+
+            // For every cell in the queue of cells that need to be checked:
+            for (std::vector<ClassBoundingBox>::iterator iq = v_toCheck.begin(); iq != v_toCheck.end(); iq++)
+            {
+                // Serch for cells in the Neighbourhood
+                // If there are cells in the Neighbourhood,
+                // Test if the are already not part of the queue of points that needs to be checked.
+                
+                // if( std::find(v_toCheck.begin(), v_toCheck.end(), (*iq) ) != v_toCheck.end() ) 
+                // {
+                //     // v contains x 
+                // } 
+
+                // else 
+                // {
+                //     // v does not contain x
+                // }
+
+
+                // If they are not,  add then to the list of points that needs to be checked.
+
+            }
+
+            // When every point of the "to check" dataset is checked, add then to the cluster list and clean it.
+            // Draw the data cells to be visualized
+ 
+        }
+
+
+
+            
+                
+
+
+        
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
 
     ROS_INFO("Inconsistencies vecotr har %ld cells", v_inconsistencies.size());
 
