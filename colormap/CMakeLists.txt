@@ -1,32 +1,15 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(world_model_consistency_check)
+project(colormap)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  rospy
-  roslib
-  tf
   pcl_ros
-  image_transport
-  cv_bridge
-  image_geometry
-  octomap_msgs
-  dynamic_reconfigure
-  colormap
-  )
-
-
-find_package(octomap REQUIRED)
-include_directories(${OCTOMAP_INCLUDE_DIRS})
-link_libraries(${OCTOMAP_LIBRARIES})
-
-find_package(PCL 1.2 REQUIRED)
-include_directories(${PCL_INCLUDE_DIRS})
-link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS})
+  roscpp
+  rviz
+  std_msgs
+)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -85,16 +68,8 @@ add_definitions(${PCL_DEFINITIONS})
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
+#   std_msgs
 # )
-
-
-#add dynamic reconfigure api
-generate_dynamic_reconfigure_options(
-    cfg/DepthConfiguration.cfg
-)
-
-# make sure configure headers are built before any node using them
 
 ###################################
 ## catkin specific configuration ##
@@ -106,9 +81,9 @@ generate_dynamic_reconfigure_options(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES world_model_consistency_check
-#  CATKIN_DEPENDS other_catkin_pkg
+  INCLUDE_DIRS include
+  LIBRARIES colormap
+  CATKIN_DEPENDS pcl_ros roscpp rviz std_msgs
 #  DEPENDS system_lib
 )
 
@@ -118,38 +93,26 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-# include_directories(include)
+#include_directories(include)
+include_directories(
+  include
+  ${catkin_INCLUDE_DIRS}
+)
 
 ## Declare a cpp library
-# add_library(world_model_consistency_check
-#   src/${PROJECT_NAME}/world_model_consistency_check.cpp
-# )
+add_library(colormap
+  src/colormap.cpp
+)
 
 ## Declare a cpp executable
-# add_executable(world_model_consistency_check_node src/world_model_consistency_check_node.cpp)
-
-add_executable(test_unknown_space src/test_unknown_space.cpp)
-target_link_libraries (test_unknown_space ${PCL_LIBRARIES} ${catkin_LIBRARIES})
-
-add_executable(compare_octrees src/compare_octrees.cpp)
-target_link_libraries (compare_octrees ${PCL_LIBRARIES} ${catkin_LIBRARIES})
-add_dependencies(compare_octrees ${PROJECT_NAME}_gencfg)
-
-add_executable(file2octomap_msg src/file2octomap_msg.cpp)
-target_link_libraries (file2octomap_msg ${PCL_LIBRARIES} ${catkin_LIBRARIES})
-
-add_executable(octomap_msg2file src/octomap_msg2file.cpp)
-target_link_libraries (octomap_msg2file ${PCL_LIBRARIES} ${catkin_LIBRARIES})
-
-add_executable(pointcloud2file src/pointcloud2file.cpp)
-target_link_libraries (pointcloud2file ${PCL_LIBRARIES} ${catkin_LIBRARIES})
+# add_executable(colormap_node src/colormap_node.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(world_model_consistency_check_node world_model_consistency_check_generate_messages_cpp)
+# add_dependencies(colormap_node colormap_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(world_model_consistency_check_node
+# target_link_libraries(colormap_node
 #   ${catkin_LIBRARIES}
 # )
 
@@ -168,7 +131,7 @@ target_link_libraries (pointcloud2file ${PCL_LIBRARIES} ${catkin_LIBRARIES})
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS world_model_consistency_check world_model_consistency_check_node
+# install(TARGETS colormap colormap_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -193,7 +156,7 @@ target_link_libraries (pointcloud2file ${PCL_LIBRARIES} ${catkin_LIBRARIES})
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_world_model_consistency_check.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_colormap.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

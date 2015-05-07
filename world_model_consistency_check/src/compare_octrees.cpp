@@ -16,7 +16,9 @@
 
 #include <dynamic_reconfigure/server.h>
 #include <world_model_consistency_check/DepthConfigurationConfig.h>
+#include <colormap/colormap.h>
 
+#define PFLN printf("LINE %d FILE %s\n",__LINE__, __FILE__);
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 using namespace std;
@@ -24,6 +26,7 @@ using namespace octomap;
 using namespace octomap_msgs;
 using namespace sensor_msgs;
 
+//class_colormap(std::string name, int total, float alfa, bool reverse=false);
 
 
 /**
@@ -299,13 +302,22 @@ void compareCallback(const ros::TimerEvent&)
     std_msgs::ColorRGBA color_cluster_purple;
     color_cluster_blue.r = 0.5; color_cluster_blue.g = 0; color_cluster_blue.b = 0.5; color_cluster_blue.a = .8;
 
+
+    PFLN
     // Vector of Cluster Colors initialization
-    // std::vector<std_msgs::ColorRGBA> cluster_colors;
-    // cluster_colors[0] = color_cluster_green;
-    // cluster_colors[1] = color_cluster_blue;
-    // cluster_colors[2] = color_cluster_red;
-    // cluster_colors[3] = color_cluster_yellow;
-    // cluster_colors[4] = color_cluster_purple;
+    std::vector<std_msgs::ColorRGBA> cluster_colors;
+    PFLN
+    cluster_colors.push_back(color_cluster_green);
+    PFLN
+    cluster_colors.push_back(color_cluster_blue);
+    PFLN
+    cluster_colors.push_back(color_cluster_red);
+    PFLN
+    cluster_colors.push_back(color_cluster_yellow);
+    PFLN
+    cluster_colors.push_back(color_cluster_purple);
+
+    PFLN
 
     // Vector of Inconsistencies initialization
     std::vector<ClassBoundingBox> vi;
@@ -365,20 +377,21 @@ void compareCallback(const ros::TimerEvent&)
         }
     }
 
-    marker_pub->publish(ma);
 
-
-
-
-
+    //Build the queue
     vector<size_t> queue;
     for (size_t i=0; i != vi.size(); ++i)
     {
         queue.push_back(i);
     }
 
-    vector< vector<size_t> > cluster; 
+    //Print the queue list
+    for (size_t i=0; i != queue.size(); ++i)
+    {
+        ROS_INFO("queue[%ld]=%ld", i, queue[i]);
+    }
 
+    vector< vector<size_t> > cluster; 
 
     while (queue.size() != 0)
     {
@@ -386,6 +399,7 @@ void compareCallback(const ros::TimerEvent&)
         size_t seed = queue[0]; 
         queue.erase(queue.begin() + 0); //remove first element
 
+        ROS_INFO("Selected seed point %ld, queue has size=%ld", seed, queue.size());
 
         //Create new cluster
         vector<size_t> tmp;
@@ -433,12 +447,13 @@ void compareCallback(const ros::TimerEvent&)
             }
 
 
-            //remove seed from flood
+
+            //add first elem of floodto cluster
+            cluster.at(cluster.size()-1).push_back(flood[0]); //add seed point to cluster
+            
+            //remove first elem of  flood
             flood.erase(flood.begin() + 0);
 
-            //add seed to cluster
-            ROS_INFO("adicionar indice %ld ao cluster %ld", seed, cluster.size()-1);
-            cluster.at(cluster.size()-1).push_back(seed); //add seed point to cluster
         }
 
 
@@ -448,12 +463,26 @@ void compareCallback(const ros::TimerEvent&)
 
     }
 
+
+
         //char name[50];
         //cout << "press a key to continue";
         //cin >> name;
 
 
     ROS_INFO("Number of clusters found %ld", cluster.size());
+    for (size_t i=0; i < cluster.size(); ++i)
+    {
+        ROS_INFO("Cluster %ld has the following points:", i);
+
+        for (size_t j=0; j < cluster[i].size(); ++j)
+        {
+            cout << cluster[i][j] << ", "; 
+        
+        }
+
+        cout << endl; 
+    }
 
 
     // ----------------------------------------------------
@@ -553,7 +582,7 @@ void compareCallback(const ros::TimerEvent&)
                 
          // }
             
-             ma.markers.push_back(vi[cluster_aux].getMarkerCubeVolume("target_cluster", "kinect_rgb_optical_frame", color_inconsistent, ++id));
+             ma.markers.push_back(vi[cluster_aux].getMarkerCubeVolume("clusters", "kinect_rgb_optical_frame", cluster_colors[k%cluster_colors.size()], ++id));
      }
 
     }
@@ -563,28 +592,28 @@ void compareCallback(const ros::TimerEvent&)
     // ----------- Center of Mass of Clusters -------------
     // ----------------------------------------------------
 
-    for (int m = 0; m < cluster.size(); ++m)
-    {
-        for (int n = 0; n < cluster[n].size(); ++n)
-        {
-            size_t cluster_aux = cluster[m][n];
+    //for (int m = 0; m < cluster.size(); ++m)
+    //{
+        //for (int n = 0; n < cluster[n].size(); ++n)
+        //{
+            //size_t cluster_aux = cluster[m][n];
 
-            point3d cellCenter = vi[cluster_aux].getCenter();
+            //point3d cellCenter = vi[cluster_aux].getCenter();
 
-            ROS_INFO("X: %ld", cellCenter.x());
+            //ROS_INFO("X: %f", cellCenter.x());
 
-            // add to vector X
-            vector<size_t> centerOfMassX;
-            centerOfMassX.push_back(cellCenter.x());
+            //// add to vector X
+            //vector<size_t> centerOfMassX;
+            //centerOfMassX.push_back(cellCenter.x());
 
-            // add to vector Y
-            vector<size_t> centerOfMassY;
-            centerOfMassX.push_back(cellCenter.y());
+            //// add to vector Y
+            //vector<size_t> centerOfMassY;
+            //centerOfMassX.push_back(cellCenter.y());
 
-            // add to vector Z
-            vector<size_t> centerOfMassZ;
-            centerOfMassX.push_back(cellCenter.z());  
-    }
+            //// add to vector Z
+            //vector<size_t> centerOfMassZ;
+            //centerOfMassX.push_back(cellCenter.z());  
+    //}
 
     // calculate average X
     // calculate average Y
@@ -595,9 +624,10 @@ void compareCallback(const ros::TimerEvent&)
     // draw center of mass of cluster
 
 
-    }
+    //}
 
 
+    marker_pub->publish(ma);
 
 
 }
