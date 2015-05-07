@@ -276,10 +276,36 @@ void compareCallback(const ros::TimerEvent&)
     // Color initialization
     std_msgs::ColorRGBA color_occupied;
     color_occupied.r = 0; color_occupied.g = 0; color_occupied.b = 0.5; color_occupied.a = .8;
+    
     std_msgs::ColorRGBA color_inconsistent;
     color_inconsistent.r = .5; color_inconsistent.g = 0; color_inconsistent.b = 0; color_inconsistent.a = .8;
+    
     std_msgs::ColorRGBA color_target_volume;
     color_target_volume.r = .5; color_target_volume.g = 0.5; color_target_volume.b = 0; color_target_volume.a = 1;
+    
+
+    std_msgs::ColorRGBA color_cluster_green;
+    color_cluster_green.r = 0; color_cluster_green.g = 0.5; color_cluster_green.b = 0; color_cluster_green.a = .8;
+
+    std_msgs::ColorRGBA color_cluster_blue;
+    color_cluster_blue.r = 0; color_cluster_blue.g = 0; color_cluster_blue.b = 0.5; color_cluster_blue.a = .8;
+
+    std_msgs::ColorRGBA color_cluster_red;
+    color_cluster_red.r = 0.5; color_cluster_red.g = 0; color_cluster_red.b = 0; color_cluster_red.a = .8;
+
+    std_msgs::ColorRGBA color_cluster_yellow;
+    color_cluster_blue.r = 0; color_cluster_blue.g = 0.5; color_cluster_blue.b = 0.5; color_cluster_blue.a = .8;
+
+    std_msgs::ColorRGBA color_cluster_purple;
+    color_cluster_blue.r = 0.5; color_cluster_blue.g = 0; color_cluster_blue.b = 0.5; color_cluster_blue.a = .8;
+
+    // Vector of Cluster Colors initialization
+    // std::vector<std_msgs::ColorRGBA> cluster_colors;
+    // cluster_colors[0] = color_cluster_green;
+    // cluster_colors[1] = color_cluster_blue;
+    // cluster_colors[2] = color_cluster_red;
+    // cluster_colors[3] = color_cluster_yellow;
+    // cluster_colors[4] = color_cluster_purple;
 
     // Vector of Inconsistencies initialization
     std::vector<ClassBoundingBox> vi;
@@ -340,6 +366,9 @@ void compareCallback(const ros::TimerEvent&)
     }
 
     marker_pub->publish(ma);
+
+
+
 
 
     vector<size_t> queue;
@@ -408,6 +437,7 @@ void compareCallback(const ros::TimerEvent&)
             flood.erase(flood.begin() + 0);
 
             //add seed to cluster
+            ROS_INFO("adicionar indice %ld ao cluster %ld", seed, cluster.size()-1);
             cluster.at(cluster.size()-1).push_back(seed); //add seed point to cluster
         }
 
@@ -492,6 +522,84 @@ void compareCallback(const ros::TimerEvent&)
 
     ros::Duration d = (ros::Time::now() - t);
     ROS_INFO("Comparisson took %f secs", d.toSec());
+
+
+
+
+    // ----------------------------------------------------
+    // --------- Draws clusters on visualizer -------------
+    // ----------------------------------------------------
+
+    ROS_INFO("cluster.size(): %ld", cluster.size());
+    ROS_INFO("cluster[0].size(): %ld", cluster[0].size());
+
+    // Iterates once per cluster
+    for (size_t k = 0; k < cluster.size(); ++k)
+    {
+     ROS_INFO("Iterating over cluster %ld", k);
+
+     // Iterates once per point of the cluster
+     for (size_t l = 0; l < cluster[k].size(); ++l)
+     {
+         ROS_INFO("Iterating over point %ld inside cluster %ld", l, k);
+
+         size_t cluster_aux = cluster[k][l];
+
+         ROS_INFO("Cluster aux: %ld", cluster_aux);
+
+         // TODO
+         // if (k > cluster_colors.size())
+         // {
+                
+         // }
+            
+             ma.markers.push_back(vi[cluster_aux].getMarkerCubeVolume("target_cluster", "kinect_rgb_optical_frame", color_inconsistent, ++id));
+     }
+
+    }
+
+
+    // ----------------------------------------------------
+    // ----------- Center of Mass of Clusters -------------
+    // ----------------------------------------------------
+
+    for (int m = 0; m < cluster.size(); ++m)
+    {
+        for (int n = 0; n < cluster[n].size(); ++n)
+        {
+            size_t cluster_aux = cluster[m][n];
+
+            point3d cellCenter = vi[cluster_aux].getCenter();
+
+            ROS_INFO("X: %ld", cellCenter.x());
+
+            // add to vector X
+            vector<size_t> centerOfMassX;
+            centerOfMassX.push_back(cellCenter.x());
+
+            // add to vector Y
+            vector<size_t> centerOfMassY;
+            centerOfMassX.push_back(cellCenter.y());
+
+            // add to vector Z
+            vector<size_t> centerOfMassZ;
+            centerOfMassX.push_back(cellCenter.z());  
+    }
+
+    // calculate average X
+    // calculate average Y
+    // calculate average Z
+
+    // create point3d for this cluster and store it in a vector
+
+    // draw center of mass of cluster
+
+
+    }
+
+
+
+
 }
 
 
