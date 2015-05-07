@@ -26,7 +26,6 @@ using namespace octomap;
 using namespace octomap_msgs;
 using namespace sensor_msgs;
 
-//class_colormap(std::string name, int total, float alfa, bool reverse=false);
 
 
 /**
@@ -287,35 +286,35 @@ void compareCallback(const ros::TimerEvent&)
     color_target_volume.r = .5; color_target_volume.g = 0.5; color_target_volume.b = 0; color_target_volume.a = 1;
     
 
-    std_msgs::ColorRGBA color_cluster_green;
-    color_cluster_green.r = 0; color_cluster_green.g = 0.5; color_cluster_green.b = 0; color_cluster_green.a = .8;
+    //std_msgs::ColorRGBA color_cluster_green;
+    //color_cluster_green.r = 0; color_cluster_green.g = 0.5; color_cluster_green.b = 0; color_cluster_green.a = .8;
 
-    std_msgs::ColorRGBA color_cluster_blue;
-    color_cluster_blue.r = 0; color_cluster_blue.g = 0; color_cluster_blue.b = 0.5; color_cluster_blue.a = .8;
+    //std_msgs::ColorRGBA color_cluster_blue;
+    //color_cluster_blue.r = 0; color_cluster_blue.g = 0; color_cluster_blue.b = 0.5; color_cluster_blue.a = .8;
 
-    std_msgs::ColorRGBA color_cluster_red;
-    color_cluster_red.r = 0.5; color_cluster_red.g = 0; color_cluster_red.b = 0; color_cluster_red.a = .8;
+    //std_msgs::ColorRGBA color_cluster_red;
+    //color_cluster_red.r = 0.5; color_cluster_red.g = 0; color_cluster_red.b = 0; color_cluster_red.a = .8;
 
-    std_msgs::ColorRGBA color_cluster_yellow;
-    color_cluster_blue.r = 0; color_cluster_blue.g = 0.5; color_cluster_blue.b = 0.5; color_cluster_blue.a = .8;
+    //std_msgs::ColorRGBA color_cluster_yellow;
+    //color_cluster_blue.r = 0; color_cluster_blue.g = 0.5; color_cluster_blue.b = 0.5; color_cluster_blue.a = .8;
 
-    std_msgs::ColorRGBA color_cluster_purple;
-    color_cluster_blue.r = 0.5; color_cluster_blue.g = 0; color_cluster_blue.b = 0.5; color_cluster_blue.a = .8;
+    //std_msgs::ColorRGBA color_cluster_purple;
+    //color_cluster_blue.r = 0.5; color_cluster_blue.g = 0; color_cluster_blue.b = 0.5; color_cluster_blue.a = .8;
 
 
-    PFLN
-    // Vector of Cluster Colors initialization
-    std::vector<std_msgs::ColorRGBA> cluster_colors;
-    PFLN
-    cluster_colors.push_back(color_cluster_green);
-    PFLN
-    cluster_colors.push_back(color_cluster_blue);
-    PFLN
-    cluster_colors.push_back(color_cluster_red);
-    PFLN
-    cluster_colors.push_back(color_cluster_yellow);
-    PFLN
-    cluster_colors.push_back(color_cluster_purple);
+    //PFLN
+    //// Vector of Cluster Colors initialization
+    //std::vector<std_msgs::ColorRGBA> cluster_colors;
+    //PFLN
+    //cluster_colors.push_back(color_cluster_green);
+    //PFLN
+    //cluster_colors.push_back(color_cluster_blue);
+    //PFLN
+    //cluster_colors.push_back(color_cluster_red);
+    //PFLN
+    //cluster_colors.push_back(color_cluster_yellow);
+    //PFLN
+    //cluster_colors.push_back(color_cluster_purple);
 
     PFLN
 
@@ -470,6 +469,7 @@ void compareCallback(const ros::TimerEvent&)
         //cin >> name;
 
 
+    class_colormap cluster_colors("summer", cluster.size(), 0.8);
     ROS_INFO("Number of clusters found %ld", cluster.size());
     for (size_t i=0; i < cluster.size(); ++i)
     {
@@ -582,7 +582,8 @@ void compareCallback(const ros::TimerEvent&)
                 
          // }
             
-             ma.markers.push_back(vi[cluster_aux].getMarkerCubeVolume("clusters", "kinect_rgb_optical_frame", cluster_colors[k%cluster_colors.size()], ++id));
+             //ma.markers.push_back(vi[cluster_aux].getMarkerCubeVolume("clusters", "kinect_rgb_optical_frame", cluster_colors[k%cluster_colors.size()], ++id));
+             ma.markers.push_back(vi[cluster_aux].getMarkerCubeVolume("clusters", "kinect_rgb_optical_frame", cluster_colors.color(k), ++id));
      }
 
     }
@@ -613,6 +614,9 @@ void compareCallback(const ros::TimerEvent&)
             //// add to vector Z
             //vector<size_t> centerOfMassZ;
             //centerOfMassX.push_back(cellCenter.z());  
+
+            //double total_volume += vi[cluster_aux].getVolume()
+            //double totalX += vi[cluster_aux].getCenter().x() * vi[cluster_aux].getVolume();
     //}
 
     // calculate average X

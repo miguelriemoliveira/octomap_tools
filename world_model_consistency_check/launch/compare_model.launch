@@ -1,14 +1,15 @@
 <?xml version="1.0"?>
 <launch>
+<arg name="target" default="$(env HOME)/bagfiles/stamina/empty3.ot"/>
 	<!--
     <node name="rosrun" pkg="world_model_consistency_check" type="file2octomap_msg" args="_input:=/stamina/empty3.ot" required="true">
 	-->
 	
 
-    <node name="rosrun" pkg="world_model_consistency_check" type="file2octomap_msg" args="_input:=$(env HOME)/bagfiles/stamina/empty3.ot _output:=/octomap_model" required="true">
+    <node name="model_octree_publisher" pkg="world_model_consistency_check" type="file2octomap_msg" args="_input:=$(arg target) _output:=/octomap_model" required="true">
     </node>
 
-    <node name="rosrun" pkg="world_model_consistency_check" type="file2octomap_msg" args="_input:=$(env HOME)/bagfiles/stamina/yellowMiddle.ot _output:=/octomap_target" required="true">
+    <node name="target_octree_publisher" pkg="world_model_consistency_check" type="file2octomap_msg" args="_input:=$(env HOME)/bagfiles/stamina/yellowMiddle.ot _output:=/octomap_target" required="true">
     </node>
 
 </launch>
