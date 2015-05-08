@@ -190,6 +190,7 @@ bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2)
 
 boost::shared_ptr<ros::Publisher> pub;
 boost::shared_ptr<ros::Publisher> marker_pub;
+boost::shared_ptr<ros::Publisher> marker_pub_center_of_mass;
 
 OcTree* octree_model = NULL;
 OcTree* octree_target = NULL;
@@ -384,11 +385,11 @@ void compareCallback(const ros::TimerEvent&)
         queue.push_back(i);
     }
 
-    //Print the queue list
-    for (size_t i=0; i != queue.size(); ++i)
-    {
-        ROS_INFO("queue[%ld]=%ld", i, queue[i]);
-    }
+    // //Print the queue list
+    // for (size_t i=0; i != queue.size(); ++i)
+    // {
+    //     ROS_INFO("queue[%ld]=%ld", i, queue[i]);
+    // }
 
     vector< vector<size_t> > cluster; 
 
@@ -398,7 +399,7 @@ void compareCallback(const ros::TimerEvent&)
         size_t seed = queue[0]; 
         queue.erase(queue.begin() + 0); //remove first element
 
-        ROS_INFO("Selected seed point %ld, queue has size=%ld", seed, queue.size());
+        // ROS_INFO("Selected seed point %ld, queue has size=%ld", seed, queue.size());
 
         //Create new cluster
         vector<size_t> tmp;
@@ -470,19 +471,19 @@ void compareCallback(const ros::TimerEvent&)
 
 
     class_colormap cluster_colors("summer", cluster.size(), 0.8);
-    ROS_INFO("Number of clusters found %ld", cluster.size());
-    for (size_t i=0; i < cluster.size(); ++i)
-    {
-        ROS_INFO("Cluster %ld has the following points:", i);
+    // ROS_INFO("Number of clusters found %ld", cluster.size());
+    // for (size_t i=0; i < cluster.size(); ++i)
+    // {
+    //     ROS_INFO("Cluster %ld has the following points:", i);
 
-        for (size_t j=0; j < cluster[i].size(); ++j)
-        {
-            cout << cluster[i][j] << ", "; 
+    //     for (size_t j=0; j < cluster[i].size(); ++j)
+    //     {
+    //         cout << cluster[i][j] << ", "; 
         
-        }
+    //     }
 
-        cout << endl; 
-    }
+    //     cout << endl; 
+    // }
 
 
     // ----------------------------------------------------
@@ -547,7 +548,7 @@ void compareCallback(const ros::TimerEvent&)
 
 
 
-    ROS_INFO("Inconsistencies vecotr har %ld cells", vi.size());
+    ROS_INFO("Inconsistencies vecotr has %ld cells", vi.size());
 
     ros::Duration d = (ros::Time::now() - t);
     ROS_INFO("Comparisson took %f secs", d.toSec());
@@ -559,22 +560,22 @@ void compareCallback(const ros::TimerEvent&)
     // --------- Draws clusters on visualizer -------------
     // ----------------------------------------------------
 
-    ROS_INFO("cluster.size(): %ld", cluster.size());
-    ROS_INFO("cluster[0].size(): %ld", cluster[0].size());
+    // ROS_INFO("cluster.size(): %ld", cluster.size());
+    // ROS_INFO("cluster[0].size(): %ld", cluster[0].size());
 
     // Iterates once per cluster
     for (size_t k = 0; k < cluster.size(); ++k)
     {
-     ROS_INFO("Iterating over cluster %ld", k);
+     // ROS_INFO("Iterating over cluster %ld", k);
 
      // Iterates once per point of the cluster
      for (size_t l = 0; l < cluster[k].size(); ++l)
      {
-         ROS_INFO("Iterating over point %ld inside cluster %ld", l, k);
+         // ROS_INFO("Iterating over point %ld inside cluster %ld", l, k);
 
          size_t cluster_aux = cluster[k][l];
 
-         ROS_INFO("Cluster aux: %ld", cluster_aux);
+         // ROS_INFO("Cluster aux: %ld", cluster_aux);
 
          // TODO
          // if (k > cluster_colors.size())
@@ -593,46 +594,84 @@ void compareCallback(const ros::TimerEvent&)
     // ----------- Center of Mass of Clusters -------------
     // ----------------------------------------------------
 
-    //for (int m = 0; m < cluster.size(); ++m)
-    //{
-        //for (int n = 0; n < cluster[n].size(); ++n)
-        //{
-            //size_t cluster_aux = cluster[m][n];
-
-            //point3d cellCenter = vi[cluster_aux].getCenter();
-
-            //ROS_INFO("X: %f", cellCenter.x());
-
-            //// add to vector X
-            //vector<size_t> centerOfMassX;
-            //centerOfMassX.push_back(cellCenter.x());
-
-            //// add to vector Y
-            //vector<size_t> centerOfMassY;
-            //centerOfMassX.push_back(cellCenter.y());
-
-            //// add to vector Z
-            //vector<size_t> centerOfMassZ;
-            //centerOfMassX.push_back(cellCenter.z());  
-
-            //double total_volume += vi[cluster_aux].getVolume()
-            //double totalX += vi[cluster_aux].getCenter().x() * vi[cluster_aux].getVolume();
-    //}
-
-    // calculate average X
-    // calculate average Y
-    // calculate average Z
-
-    // create point3d for this cluster and store it in a vector
-
-    // draw center of mass of cluster
+    // Visualization Message Marker Array for the center of mass
+    visualization_msgs::MarkerArray ma_centerofmass;
+    int id_ma_centerofmass = 0;
 
 
-    //}
+    for (size_t m = 0; m < cluster.size(); ++m)
+    {
 
+        double totalX = 0;
+        double totalY = 0;
+        double totalZ = 0;
+
+        for (size_t n = 0; n < cluster[m].size(); ++n)
+        {
+
+            size_t cluster_aux = cluster[m][n];
+
+            // double total_volume += vi[cluster_aux].getVolume();
+            // double totalX += vi[cluster_aux].getCenter().x() * vi[cluster_aux].getVolume();
+
+            // Calculate the sum of X
+            totalX += vi[cluster_aux].getCenter().x();
+
+            // Calculate the sum of Y
+            totalY += vi[cluster_aux].getCenter().y();
+
+            // Calculate the sum of Z
+            totalZ += vi[cluster_aux].getCenter().z();
+        }
+
+        // Calculate the average of X
+        double averageX = 0;
+        averageX = totalX / cluster[m].size();
+
+        // Calculate the average of Y
+        double averageY = 0;
+        averageY = totalY / cluster[m].size();
+
+        // Calculate the average of Z
+        double averageZ = 0;
+        averageZ = totalZ / cluster[m].size();
+
+        ROS_INFO("Averages for Cluster[%ld]: X: %d, Y: %d, Z: %d", m, averageX, averageY, averageZ);
+
+        visualization_msgs::Marker marker;
+        marker.header.frame_id = "kinect_rgb_optical_frame";
+        marker.header.stamp = ros::Time();
+        marker.ns = "centerOfMass";
+        marker.id = id_ma_centerofmass; //   ATENTION!!
+        marker.type = visualization_msgs::Marker::SPHERE;
+        marker.action = visualization_msgs::Marker::ADD;
+
+        marker.pose.position.x = averageX;
+        marker.pose.position.y = averageY;
+        marker.pose.position.z = averageZ;
+
+        marker.pose.orientation.x = 0.0;
+        marker.pose.orientation.y = 0.0;
+        marker.pose.orientation.z = 0.0;
+        marker.pose.orientation.w = 1.0;
+
+        marker.scale.x = 0.1;
+        marker.scale.y = 0.1;
+        marker.scale.z = 0.1;
+
+        marker.color.a = 1.0; // Don't forget to set the alpha!
+        marker.color.r = 0.0;
+        marker.color.g = 1.0;
+        marker.color.b = 0.0;
+
+        ma_centerofmass.markers.push_back(marker);
+
+        id_ma_centerofmass++;
+
+    }
 
     marker_pub->publish(ma);
-
+    marker_pub_center_of_mass->publish(ma_centerofmass);
 
 }
 
@@ -693,6 +732,11 @@ int main (int argc, char** argv)
 
     marker_pub = (boost::shared_ptr<ros::Publisher>) (new ros::Publisher);
     *marker_pub = nh.advertise<visualization_msgs::MarkerArray>("/inconsistencies_arrays", 10);
+
+    marker_pub_center_of_mass = (boost::shared_ptr<ros::Publisher>) (new ros::Publisher);
+    *marker_pub_center_of_mass = nh.advertise<visualization_msgs::MarkerArray>("/center_of_mass", 10);
+
+    
 
     ros::spin();
     return (0);
