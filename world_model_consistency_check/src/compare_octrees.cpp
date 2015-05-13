@@ -195,8 +195,8 @@ boost::shared_ptr<ros::Publisher> marker_pub_center_of_mass;
 OcTree* octree_model = NULL;
 OcTree* octree_target = NULL;
 
-std::string topic_model = "/octomap_full";
-std::string topic_target = "/output";
+std::string topic_model = "/octomap_model";
+std::string topic_target = "/octomap_target";
 
 unsigned char depth = 13;
 
@@ -659,7 +659,7 @@ void compareCallback(const ros::TimerEvent&)
         marker.scale.y = 0.1;
         marker.scale.z = 0.1;
 
-        marker.color.a = 1.0; // Don't forget to set the alpha!
+        marker.color.a = 0.8; // Don't forget to set the alpha!
         marker.color.r = 0.0;
         marker.color.g = 1.0;
         marker.color.b = 0.0;
