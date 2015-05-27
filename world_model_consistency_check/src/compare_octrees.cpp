@@ -19,7 +19,6 @@
 #include <colormap/colormap.h>
 
 
-
 #define PFLN printf("LINE %d FILE %s\n",__LINE__, __FILE__);
 
 using namespace std;
@@ -201,7 +200,10 @@ std::string topic_target = "/octomap_target";
 unsigned char depth = 13;
 
 //Declare a ClassBoundingBox which defines the target_volume
-ClassBoundingBox target_volume(-0.42, 0.42, -0.42, 0.42, 0.2, 3.0);
+//ClassBoundingBox target_volume(-0.42, 0.42, -0.42, 0.42, 0.2, 3.0);
+ClassBoundingBox target_volume(0.6, 2.0, -1, 1, 0.2, 2.5);
+
+std::string octree_frame_id = "kinect_rgb_optical_frame";
 
 void octomapCallbackModel(const octomap_msgs::Octomap::ConstPtr& msg)
 {
@@ -245,6 +247,9 @@ void octomapCallbackTarget(const octomap_msgs::Octomap::ConstPtr& msg)
     octree_target = dynamic_cast<OcTree*>(tree);
 
     ROS_INFO("Received new octree target on topic %s with id: %s, frame_id: %s\n", topic_target.c_str(), msg->id.c_str(), msg->header.frame_id.c_str());
+
+    if (msg->header.frame_id != "")
+        octree_frame_id = msg->header.frame_id;
 
     // int treeDepth = octree_target->getTreeDepth();
     // ROS_INFO("treeDepth = %d", treeDepth);
@@ -302,27 +307,20 @@ void compareCallback(const ros::TimerEvent&)
     //color_cluster_blue.r = 0.5; color_cluster_blue.g = 0; color_cluster_blue.b = 0.5; color_cluster_blue.a = .8;
 
 
-    //PFLN
     //// Vector of Cluster Colors initialization
     //std::vector<std_msgs::ColorRGBA> cluster_colors;
-    //PFLN
     //cluster_colors.push_back(color_cluster_green);
-    //PFLN
     //cluster_colors.push_back(color_cluster_blue);
-    //PFLN
     //cluster_colors.push_back(color_cluster_red);
-    //PFLN
     //cluster_colors.push_back(color_cluster_yellow);
-    //PFLN
     //cluster_colors.push_back(color_cluster_purple);
 
-    PFLN
 
     // Vector of Inconsistencies initialization
     std::vector<ClassBoundingBox> vi;
 
     // Creates the target volume message array
-    ma.markers.push_back(target_volume.getMarkerWithEdges("target_volume", "kinect_rgb_optical_frame", color_target_volume, ++id));
+    ma.markers.push_back(target_volume.getMarkerWithEdges("target_volume", octree_frame_id , color_target_volume, ++id));
 
 
     ROS_INFO_STREAM("Starting Iteration");
@@ -338,7 +336,7 @@ void compareCallback(const ros::TimerEvent&)
             {
                 //ROS_INFO("Found an known and occupied node!");
                 ClassBoundingBox target_cell(it.getX(), it.getY(), it.getZ(), it.getSize());
-                ma.markers.push_back(target_cell.getMarkerWithEdges("target_occupied", "kinect_rgb_optical_frame", color_occupied, ++id));
+                ma.markers.push_back(target_cell.getMarkerWithEdges("target_occupied", octree_frame_id , color_occupied, ++id));
 
                 bool flg_found_occupied = false;
 
@@ -370,7 +368,7 @@ void compareCallback(const ros::TimerEvent&)
                     // Add the inconsistency cell into a vector
                     vi.push_back(target_cell);
 
-                    ma.markers.push_back(target_cell.getMarkerCubeVolume("target_inconsistent", "kinect_rgb_optical_frame", color_inconsistent, ++id));
+                    ma.markers.push_back(target_cell.getMarkerCubeVolume("target_inconsistent", octree_frame_id, color_inconsistent, ++id));
                 }
             }
         }
@@ -469,6 +467,7 @@ void compareCallback(const ros::TimerEvent&)
         //cin >> name;
 
 
+    ROS_INFO("There are %ld clusters", cluster.size());
     class_colormap cluster_colors("summer", cluster.size(), 0.8);
     // ROS_INFO("Number of clusters found %ld", cluster.size());
     // for (size_t i=0; i < cluster.size(); ++i)
@@ -562,6 +561,7 @@ void compareCallback(const ros::TimerEvent&)
     // ROS_INFO("cluster.size(): %ld", cluster.size());
     // ROS_INFO("cluster[0].size(): %ld", cluster[0].size());
 
+
     // Iterates once per cluster
     for (size_t k = 0; k < cluster.size(); ++k)
     {
@@ -582,11 +582,11 @@ void compareCallback(const ros::TimerEvent&)
                 
          // }
             
-             //ma.markers.push_back(vi[cluster_aux].getMarkerCubeVolume("clusters", "kinect_rgb_optical_frame", cluster_colors[k%cluster_colors.size()], ++id));
-             ma.markers.push_back(vi[cluster_aux].getMarkerCubeVolume("clusters", "kinect_rgb_optical_frame", cluster_colors.color(k), ++id));
+             ma.markers.push_back(vi[cluster_aux].getMarkerCubeVolume("clusters", octree_frame_id, cluster_colors.color(k), ++id));
      }
 
     }
+
 
 
     // ----------------------------------------------------
@@ -638,7 +638,7 @@ void compareCallback(const ros::TimerEvent&)
         ROS_INFO("Averages for Cluster[%ld]: X: %f, Y: %f, Z: %f", m, averageX, averageY, averageZ);
 
         visualization_msgs::Marker marker;
-        marker.header.frame_id = "kinect_rgb_optical_frame";
+        marker.header.frame_id = octree_frame_id ;
         marker.header.stamp = ros::Time();
         marker.ns = "centerOfMass";
         marker.id = id_ma_centerofmass; //   ATENTION!!
@@ -669,8 +669,11 @@ void compareCallback(const ros::TimerEvent&)
 
     }
 
+
     marker_pub->publish(ma);
+
     marker_pub_center_of_mass->publish(ma_centerofmass);
+
 
 }
 
