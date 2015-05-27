@@ -21,6 +21,8 @@ using namespace sensor_msgs;
 std::string output = "tmp.ot";
 std::string input = "/octomap";
 
+bool continuous = false;
+
 void octomapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
 {
 
@@ -30,6 +32,11 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
     ROS_INFO("Saving octomap from topic %s to file %s", input.c_str(), output.c_str());
     octree->write(output.c_str());
     ros::Duration(1).sleep(); // sleep for half a second
+
+    if (continuous == false)
+    {
+        ros::shutdown();
+    }
 }
 
 int main (int argc, char** argv)
@@ -42,6 +49,22 @@ int main (int argc, char** argv)
     if (ros::param::get("~output", output))
     {
         ROS_INFO("Saving to file %s", output.c_str());
+    }
+
+    for (int i = 0; i < argc; ++i)
+    {
+        // ROS_INFO("argv[%d]: %s", i, argv[i]);
+
+        std::string s = argv[i];
+
+        if (s == "--continuous")
+        {
+            ROS_INFO("Continuous Mode");
+
+            continuous = true;
+
+            break;
+        }
     }
 
     ROS_INFO("Subscribing to octree on topic name %s",input.c_str());
