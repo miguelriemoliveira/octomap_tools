@@ -18,14 +18,14 @@
 #include <world_model_consistency_check/DepthConfigurationConfig.h>
 #include <colormap/colormap.h>
 
+
+
 #define PFLN printf("LINE %d FILE %s\n",__LINE__, __FILE__);
-typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 using namespace std;
 using namespace octomap;
 using namespace octomap_msgs;
 using namespace sensor_msgs;
-
 
 
 /**
@@ -248,7 +248,6 @@ void octomapCallbackTarget(const octomap_msgs::Octomap::ConstPtr& msg)
 
     // int treeDepth = octree_target->getTreeDepth();
     // ROS_INFO("treeDepth = %d", treeDepth);
-
 }
 
 
@@ -636,7 +635,7 @@ void compareCallback(const ros::TimerEvent&)
         double averageZ = 0;
         averageZ = totalZ / cluster[m].size();
 
-        ROS_INFO("Averages for Cluster[%ld]: X: %d, Y: %d, Z: %d", m, averageX, averageY, averageZ);
+        ROS_INFO("Averages for Cluster[%ld]: X: %f, Y: %f, Z: %f", m, averageX, averageY, averageZ);
 
         visualization_msgs::Marker marker;
         marker.header.frame_id = "kinect_rgb_optical_frame";
@@ -708,6 +707,7 @@ int main (int argc, char** argv)
     //std::vector<ClassBoundingBox> v;
 
     //return 1;
+    
 
     // Use: _topic_model:=/topic_model  and  _topic_target:=/topic_target
     ros::param::get("~topic_model", topic_model);
@@ -735,8 +735,6 @@ int main (int argc, char** argv)
 
     marker_pub_center_of_mass = (boost::shared_ptr<ros::Publisher>) (new ros::Publisher);
     *marker_pub_center_of_mass = nh.advertise<visualization_msgs::MarkerArray>("/center_of_mass", 10);
-
-    
 
     ros::spin();
     return (0);

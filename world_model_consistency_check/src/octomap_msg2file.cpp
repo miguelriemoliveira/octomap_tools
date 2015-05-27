@@ -12,6 +12,7 @@
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
+
 using namespace std;
 using namespace octomap;
 using namespace octomap_msgs;

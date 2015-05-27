@@ -11,10 +11,11 @@
 //#include <octomap/OcTree.h>
 
 #include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
 #include <pcl_ros/point_cloud.h>
 #include <visualization_msgs/MarkerArray.h>
 
-typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+typedef pcl::PointCloud<pcl::PointXYZ> PC;
 
 using namespace std;
 using namespace octomap;
@@ -38,7 +39,7 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
     cout << max << endl;
     double resolution = 0.05;
 
-    PointCloud::Ptr pc_msg (new PointCloud);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pc_msg (new pcl::PointCloud<pcl::PointXYZ>);
     pc_msg->header.frame_id = "/shelf";
     pc_msg->height = 1;
     pc_msg->width = 0;

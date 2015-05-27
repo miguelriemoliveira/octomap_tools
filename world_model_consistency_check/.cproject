@@ -29,6 +29,7 @@
 									<listOptionValue builtIn="false" value="/opt/ros/indigo"/>
 									<listOptionValue builtIn="false" value="/home/mike/catkin_ws/src"/>
 									<listOptionValue builtIn="false" value="/usr/include/pcl-1.7"/>
+									<listOptionValue builtIn="false" value="/usr/include"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.718753909" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
@@ -81,6 +82,7 @@
 									<listOptionValue builtIn="false" value="/opt/ros/indigo"/>
 									<listOptionValue builtIn="false" value="/home/mike/catkin_ws/src"/>
 									<listOptionValue builtIn="false" value="/usr/include/pcl-1.7"/>
+									<listOptionValue builtIn="false" value="/usr/include"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.615983418" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
@@ -161,4 +163,5 @@
 		</scannerConfigBuildInfo>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
+	<storageModule moduleId="refreshScope"/>
 </cproject>

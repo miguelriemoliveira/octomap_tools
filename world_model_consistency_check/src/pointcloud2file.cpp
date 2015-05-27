@@ -11,6 +11,7 @@ typedef pcl::PointXYZRGBA PointT;
 
 std::string filename = "output.pcd";
 
+
 void
 cloud_open_target (const sensor_msgs::PointCloud2ConstPtr& msg)
 {
