@@ -8,7 +8,7 @@
     <!--<param name="resolution" value="0.1" />-->
     <!-- fixed map frame (set to 'map' if SLAM or localization running!) -->
     <!--<param name="frame_id" type="string" value="/$(arg frame_id)"/>-->
-    <param name="frame_id" type="string" value="/world" />
+    <param name="frame_id" type="string" value="/world"/>
     <!--<param name="frame_id" type="string" value="/kinect_rgb_optical_frame" />-->
     <param name="latch" type="bool" value="false"/>
     <!-- maximum range to integrate (speedup!) -->
@@ -16,6 +16,10 @@
     <!-- data source to integrate (PointCloud2) -->
     <remap from="cloud_in" to="/$(arg camera)/depth_registered/points"/>
     <param name="publish_free_space" value="true"/>
+    <param name="sensor_model/hit" value="0.8"/>
+    <param name="sensor_model/miss" value="0.01"/>
+    <!--<param name="sensor_model/hit" value="0.7"/>-->
+    <!--<param name="sensor_model/miss" value="0.4"/>-->
     <!--<param name="save_directory" value="$(optenv OCTOMAP_SAVE_DIR ./)" />-->
     <!--<param name="save_directory" value="home/mike/octomap_saves" />-->
   </node>
