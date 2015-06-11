@@ -8,7 +8,7 @@
     <arg name="load_driver" value="false"/>
     <arg name="publish_tf" value="false"/>
     <arg name="depth_registration" value="true"/>
-    <arg name="camera" value="camera"/>
+    <arg name="camera" value="kinect"/>
   </include>
   <!-- Read back a bag file recorded with the associated record.launch,
 	which will then be processed by the nodes launched by openni.launch -->
