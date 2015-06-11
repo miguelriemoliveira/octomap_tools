@@ -53,7 +53,7 @@ int main (int argc, char** argv)
         ROS_WARN("No topic name given, using default %s",output.c_str());
     }
 
-    int rate=1;
+    double rate=1;
     ros::param::get("~rate", rate);
 
     octomap_msgs::Octomap msg;
