@@ -23,6 +23,9 @@
 #include <pcl/point_types.h>
 #include <tf/transform_listener.h>
 
+//My includes
+#include <world_model_consistency_check/bounding_box.h>
+
 #define PFLN printf("LINE %d FILE %s\n",__LINE__, __FILE__);
 
 using namespace std;
@@ -31,143 +34,8 @@ using namespace octomap_msgs;
 using namespace sensor_msgs;
 
 
-/**
- * @brief Defines a cubic volume that we can use to limit an octree search
- */
-class ClassBoundingBox
-{
-    public:
-
-        ClassBoundingBox(double min_x, double max_x, double min_y, double max_y, double min_z, double max_z)
-        {
-            _min_x = min_x; _max_x = max_x;
-            _min_y = min_y; _max_y = max_y;
-            _min_z = min_z; _max_z = max_z;
-        };
-
-        ClassBoundingBox(double center_x, double center_y, double center_z, double size)
-        {
-            double s2 = size/2;
-            _min_x = center_x - s2; _max_x = center_x + s2;
-            _min_y = center_y - s2; _max_y = center_y + s2;
-            _min_z = center_z - s2; _max_z = center_z + s2;
-        };
 
 
-        ~ClassBoundingBox(){};
-
-        point3d getMinimumPoint(void){point3d p; p.x() = _min_x; p.y() = _min_y; p.z() = _min_z; return p;};
-        point3d getMaximumPoint(void){point3d p; p.x() = _max_x; p.y() = _max_y; p.z() = _max_z; return p;};
-
-        void getEdgesToDraw(std::vector<geometry_msgs::Point>& l)
-        {
-            geometry_msgs::Point p;
-            p.x = _min_x; p.y=_min_y; p.z = _min_z; l.push_back(p);
-            p.x = _max_x; p.y=_min_y; p.z = _min_z; l.push_back(p);
-            p.x = _max_x; p.y=_max_y; p.z = _min_z; l.push_back(p);
-            p.x = _min_x; p.y=_max_y; p.z = _min_z; l.push_back(p);
-            p.x = _min_x; p.y=_min_y; p.z = _min_z; l.push_back(p);
-            p.x = _min_x; p.y=_min_y; p.z = _max_z; l.push_back(p);
-            p.x = _max_x; p.y=_min_y; p.z = _max_z; l.push_back(p);
-            p.x = _max_x; p.y=_max_y; p.z = _max_z; l.push_back(p);
-            p.x = _min_x; p.y=_max_y; p.z = _max_z; l.push_back(p);
-            p.x = _min_x; p.y=_min_y; p.z = _max_z; l.push_back(p);
-            p.x = _min_x; p.y=_max_y; p.z = _max_z; l.push_back(p);
-            p.x = _min_x; p.y=_max_y; p.z = _min_z; l.push_back(p);
-            p.x = _max_x; p.y=_max_y; p.z = _min_z; l.push_back(p);
-            p.x = _max_x; p.y=_max_y; p.z = _max_z; l.push_back(p);
-            p.x = _max_x; p.y=_min_y; p.z = _max_z; l.push_back(p);
-            p.x = _max_x; p.y=_min_y; p.z = _min_z; l.push_back(p);
-        }
-
-        visualization_msgs::Marker createMarker(std::string ns, std::string frame_id, std_msgs::ColorRGBA color, int id)
-        {
-            visualization_msgs::Marker m;
-            m.ns = ns;
-            m.header.frame_id = frame_id;
-            m.header.stamp = ros::Time::now();
-            m.action = visualization_msgs::Marker::ADD;
-            m.id = id;
-            m.color = color;
-            return m;
-        }
-
-
-        visualization_msgs::Marker getMarkerWithEdges(std::string ns, std::string frame_id, std_msgs::ColorRGBA color, int id)
-        {
-            visualization_msgs::Marker m = createMarker(ns, frame_id, color, id);
-            m.type = visualization_msgs::Marker::LINE_STRIP;
-            m.scale.x = 0.002;
-            getEdgesToDraw(m.points);
-            return m;
-        }
-
-        visualization_msgs::Marker getMarkerCubeVolume(std::string ns, std::string frame_id, std_msgs::ColorRGBA color, int id)
-        {
-
-            visualization_msgs::Marker m = createMarker(ns, frame_id, color, id);
-            m.type = visualization_msgs::Marker::CUBE;
-            double size = _max_x - _min_x;
-            m.scale.x = m.scale.y = m.scale.z = size;
-            m.pose.position.x = (_max_x + _min_x)/2;
-            m.pose.position.y = (_max_y + _min_y)/2;
-            m.pose.position.z = (_max_z + _min_z)/2;
-            return m;
-        }
-
-        double getSize(void) {return _max_x - _min_x;};
-        double getVolume(void) {return getSize()*getSize()*getSize();};
-
-        point3d getCenter(void) 
-        {
-            point3d p; 
-            p.x() = (_max_x + _min_x)/2;
-            p.y() = (_max_y + _min_y)/2;
-            p.z() = (_max_z + _min_z)/2;
-            return p;
-        }
-
-
-        std::vector<size_t> pointsInPointCloud(boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> >& pc)
-        {
-
-            std::vector<size_t> v;
-            for (size_t i=0; i<pc->size(); ++i)
-            {
-                if (isPointInVolume(pc->points[i].x, pc->points[i].y, pc->points[i].z))
-                {
-                    v.push_back(i);
-                }
-
-            }
-            return v;
-
-        }
-
-        bool isPointInVolume(float x, float y, float z)
-        {
-            if (x >= _min_x && x <= _max_x  &&
-                    y >= _min_y && y <= _max_y &&
-                    z >= _min_z && z <= _max_z) 
-            {
-                return true;
-            }
-            else
-                return false;
-
-
-
-        }
-
-    protected:
-
-        double _min_x;
-        double _max_x;
-        double _min_y;
-        double _max_y;
-        double _min_z;
-        double _max_z;
-};
 
 // bool operator==(const ClassBoundingBox& lhs, const ClassBoundingBox& rhs) const
 //         { 
@@ -216,7 +84,6 @@ bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2)
 }
 
 
-
 /* _________________________________
    |                                 |
    |        GLOBAL VARIABLES         |
@@ -224,6 +91,8 @@ bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2)
 
 
 boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > pc;
+boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > pc2;
+boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > pcin;
 boost::shared_ptr<ros::Publisher> pub;
 boost::shared_ptr<ros::Publisher> marker_pub;
 boost::shared_ptr<ros::Publisher> marker_pub_center_of_mass;
@@ -238,45 +107,55 @@ OcTree* octree_target = NULL;
 
 std::string topic_model = "/octomap_model";
 std::string topic_target = "/octomap_target";
+std::string topic_point_cloud = "/camera/depth_registered/points";
 
 unsigned char depth = 13;
 double volume_threshold = 0.7;
+double exceeding_threshold = 0.2;
+double missing_threshold = 0.5;
 
 
 //Declare a ClassBoundingBox which defines the target_volume
 //ClassBoundingBox target_volume(-0.42, 0.42, -0.42, 0.42, 0.2, 3.0);
-ClassBoundingBox target_volume(0.6, 1.4, -.7, .7, 0.6, 2.0);
-
+//ClassBoundingBox target_volume(0.6, 1.4, -.7, .7, 0.6, 2.0);
+ClassBoundingBox target_volume(0.4, 2.0, -1.0, 1., 0.3, 2.2);
 std::string octree_frame_id = "kinect_rgb_optical_frame";
+bool flg_received_new_target = false;
+bool flg_received_point_cloud = false;
+AbstractOcTree* model_tree;
+AbstractOcTree* target_tree;
 
-
-
-
-
+/* _________________________________
+  |                                 |
+  |           Callbacks             |
+  |_________________________________| */
 
 void octomapCallbackModel(const octomap_msgs::Octomap::ConstPtr& msg)
 {
-    AbstractOcTree* tree = msgToMap(*msg);
-    octree_model = dynamic_cast<OcTree*>(tree);
-
-    ROS_INFO("Received new octree model on topic %s with id: %s, frame_id: %s\n", topic_model.c_str(), msg->id.c_str(), msg->header.frame_id.c_str());
-
-    // // int treeDepth = octree_model->getTreeDepth();
-    // // ROS_INFO("treeDepth = %d", treeDepth); 
+    //ROS_INFO("Received new octree model on topic %s with id: %s, frame_id: %s\n", topic_model.c_str(), msg->id.c_str(), msg->header.frame_id.c_str());
+    model_tree = msgToMap(*msg);
+    octree_model = dynamic_cast<OcTree*>(model_tree);
+    //free(model_tree);
 }
 
 void octomapCallbackTarget(const octomap_msgs::Octomap::ConstPtr& msg)
 {
-    AbstractOcTree* tree = msgToMap(*msg);
-    octree_target = dynamic_cast<OcTree*>(tree);
-
-    ROS_INFO("Received new octree target on topic %s with id: %s, frame_id: %s\n", topic_target.c_str(), msg->id.c_str(), msg->header.frame_id.c_str());
+    //ROS_INFO("Received new octree target on topic %s with id: %s, frame_id: %s\n", topic_target.c_str(), msg->id.c_str(), msg->header.frame_id.c_str());
+    target_tree = msgToMap(*msg);
+    octree_target = dynamic_cast<OcTree*>(target_tree);
+    //free(target_tree);
 
     if (msg->header.frame_id != "")
         octree_frame_id = msg->header.frame_id;
 
-    // int treeDepth = octree_target->getTreeDepth();
-    // ROS_INFO("treeDepth = %d", treeDepth);
+    flg_received_new_target = true;
+}
+
+void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
+{
+    pcl::fromROSMsg(*msg, *pcin);
+    //ROS_INFO("Received point cloud with frame_id %s", pcin )
+    flg_received_point_cloud = true;
 }
 
 
@@ -300,10 +179,25 @@ void compareCallback(const ros::TimerEvent&)
         return;   
     }
 
+    if (flg_received_new_target==true)
+    {
+        flg_received_new_target = false;
+    }
+    else
+    {
+        return;
+    }
     // Visualization Message Marker Array
     visualization_msgs::MarkerArray ma;
     visualization_msgs::MarkerArray ma_inconsistencies;
     visualization_msgs::MarkerArray ma_clusters;
+
+    visualization_msgs::Marker marker_deleteall;
+    marker_deleteall.header.stamp = ros::Time();
+    marker_deleteall.header.frame_id = octree_frame_id ;
+    marker_deleteall.ns = "target_inconsistent";
+    marker_deleteall.action = 3;
+
     unsigned int id=0;
     unsigned int id_inconsistencies=0;
     unsigned int id_noneighbors=0;
@@ -315,6 +209,9 @@ void compareCallback(const ros::TimerEvent&)
 
     std_msgs::ColorRGBA color_inconsistent;
     color_inconsistent.r = .5; color_inconsistent.g = 0; color_inconsistent.b = 0; color_inconsistent.a = .8;
+    std_msgs::ColorRGBA color_inconsistent_missing;
+    color_inconsistent_missing.r = .0; color_inconsistent_missing.g = 0.5; color_inconsistent_missing.b = 0; color_inconsistent_missing.a = .8;
+
 
     std_msgs::ColorRGBA color_target_volume;
     color_target_volume.r = .5; color_target_volume.g = 0.5; color_target_volume.b = 0; color_target_volume.a = 1;
@@ -323,33 +220,9 @@ void compareCallback(const ros::TimerEvent&)
     color_noneighbors.r = .5; color_noneighbors.g = 0; color_noneighbors.b = 1; color_noneighbors.a = .8;
 
 
-    //std_msgs::ColorRGBA color_cluster_green;
-    //color_cluster_green.r = 0; color_cluster_green.g = 0.5; color_cluster_green.b = 0; color_cluster_green.a = .8;
-
-    //std_msgs::ColorRGBA color_cluster_blue;
-    //color_cluster_blue.r = 0; color_cluster_blue.g = 0; color_cluster_blue.b = 0.5; color_cluster_blue.a = .8;
-
-    //std_msgs::ColorRGBA color_cluster_red;
-    //color_cluster_red.r = 0.5; color_cluster_red.g = 0; color_cluster_red.b = 0; color_cluster_red.a = .8;
-
-    //std_msgs::ColorRGBA color_cluster_yellow;
-    //color_cluster_blue.r = 0; color_cluster_blue.g = 0.5; color_cluster_blue.b = 0.5; color_cluster_blue.a = .8;
-
-    //std_msgs::ColorRGBA color_cluster_purple;
-    //color_cluster_blue.r = 0.5; color_cluster_blue.g = 0; color_cluster_blue.b = 0.5; color_cluster_blue.a = .8;
-
-
-    //// Vector of Cluster Colors initialization
-    //std::vector<std_msgs::ColorRGBA> cluster_colors;
-    //cluster_colors.push_back(color_cluster_green);
-    //cluster_colors.push_back(color_cluster_blue);
-    //cluster_colors.push_back(color_cluster_red);
-    //cluster_colors.push_back(color_cluster_yellow);
-    //cluster_colors.push_back(color_cluster_purple);
-
-
     // Vector of Inconsistencies initialization
     std::vector<ClassBoundingBox> vi;
+    std::vector<ClassBoundingBox> vi_missing;
 
     // Creates the target volume message array
     ma.markers.push_back(target_volume.getMarkerWithEdges("target_volume", octree_frame_id , color_target_volume, ++id));
@@ -364,16 +237,15 @@ void compareCallback(const ros::TimerEvent&)
     {
         if (octree_target->search(it.getKey())) // Verifies if the node exists
         {
-            if (octree_target->isNodeOccupied(*it)) // Verifies if the Node is occupied
-            {
-                //ROS_INFO("Found an known and occupied node!");
-                ClassBoundingBox target_cell(it.getX(), it.getY(), it.getZ(), it.getSize());
-                ma.markers.push_back(target_cell.getMarkerWithEdges("target_occupied", octree_frame_id , color_occupied, ++id));
+            ClassBoundingBox target_cell(it.getX(), it.getY(), it.getZ(), it.getSize());
+            //bool flg_found_at_least_one_occupied = false;
+            //bool flg_found_neighbors = false;
+            //int count =0;
+            size_t num_occupied = 0;
+            size_t num_neighbors = 0;
 
-                bool flg_found_occupied = false;
-                bool flg_found_neighbors = false;
-                int count =0;
-
+            ma.markers.push_back(target_cell.getMarkerWithEdges("target_occupied", octree_frame_id , color_occupied, ++id));
+            
                 // -------------------------------------------------------------
                 // ----------- Iterate over model octree ----------------------
                 // -------------------------------------------------------------
@@ -381,36 +253,110 @@ void compareCallback(const ros::TimerEvent&)
                 {
                     if (octree_model->search(it_model.getKey())) // Verifies if the nodes exists
                     {
-                        flg_found_neighbors = true;
+                        num_neighbors++;
+                        //flg_found_neighbors = true;
 
                         if (!octree_model->isNodeOccupied(*it_model)) // Verifies if the node is free
                         {
                             //Do something here - Draw node, etc
-                            //ClassBoundingBox inconsistent_volume(it_model.getX(), it_model.getY(), it_model.getZ(), it_model.getSize());
-                            //inconsistent_volume.getEdgesToDraw(m.points);
-                            //ma.markers.push_back(m);
-
-                            //ROS_INFO_STREAM("found!");
                         }
                         else
                         {
-                            flg_found_occupied = true;
+                            num_occupied++;
+                            //flg_found_at_least_one_occupied = true;
                         }
                     }
                 }
 
-                if (flg_found_occupied == false && flg_found_neighbors == true) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
+                double occupation_ratio=0;
+                if (num_neighbors !=0)
                 {
+                    occupation_ratio = (double)num_occupied/(double)num_neighbors;
+                }
+
+
+                //if (octree_target->isNodeOccupied(*it) && flg_found_at_least_one_occupied == false && flg_found_neighbors == true) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
+                if (octree_target->isNodeOccupied(*it) && occupation_ratio <= exceeding_threshold && num_neighbors !=0) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
+                {
+                    //Inconsistencies of type exceeding 
                     // Add the inconsistency cell into a vector
                     vi.push_back(target_cell);
 
                     ma_inconsistencies.markers.push_back(target_cell.getMarkerCubeVolume("target_inconsistent", octree_frame_id, color_inconsistent, ++id_inconsistencies));
                 }
-            }
+                //else if(!octree_target->isNodeOccupied(*it) && flg_found_at_least_one_occupied == true && flg_found_neighbors == true)
+                
+                //if(!octree_target->isNodeOccupied(*it) && occupation_ratio >= missing_threshold && num_neighbors!=0)
+                //{
+                    ////Inconsistencies of type missing 
+                     //vi_missing.push_back(target_cell);
+
+                    //ma_inconsistencies.markers.push_back(target_cell.getMarkerCubeVolume("target_inconsistent_missing", octree_frame_id, color_inconsistent_missing, ++id_inconsistencies));
+               
+                //}
         }
     }
 
 
+    // -------------------------------------------------------------
+    // ----------- Iterate over model octree ----------------------
+    // -------------------------------------------------------------
+    for(OcTree::leaf_bbx_iterator it = octree_model->begin_leafs_bbx(target_volume.getMinimumPoint(), target_volume.getMaximumPoint(), depth), end=octree_model->end_leafs_bbx(); it!= end; ++it)
+    {
+        if (octree_model->search(it.getKey())) // Verifies if the node exists
+        {
+            ClassBoundingBox model_cell(it.getX(), it.getY(), it.getZ(), it.getSize());
+            //bool flg_found_at_least_one_occupied = false;
+            //bool flg_found_neighbors = false;
+            //int count =0;
+            size_t num_occupied = 0;
+            size_t num_neighbors = 0;
+
+            ma.markers.push_back(model_cell.getMarkerWithEdges("model_occupied", octree_frame_id , color_occupied, ++id));
+            
+                // -------------------------------------------------------------
+                // ----------- Iterate over model octree ----------------------
+                // -------------------------------------------------------------
+                for(OcTree::leaf_bbx_iterator it_target = octree_target->begin_leafs_bbx(model_cell.getMinimumPoint(),model_cell.getMaximumPoint(), depth), end=octree_target->end_leafs_bbx(); it_target!= end; ++it_target)
+                {
+                    if (octree_target->search(it_target.getKey())) // Verifies if the nodes exists
+                    {
+                        num_neighbors++;
+                        //flg_found_neighbors = true;
+
+                        if (!octree_target->isNodeOccupied(*it_target)) // Verifies if the node is free
+                        {
+                            //Do something here - Draw node, etc
+                        }
+                        else
+                        {
+                            num_occupied++;
+                            //flg_found_at_least_one_occupied = true;
+                        }
+                    }
+                }
+
+                double occupation_ratio=0;
+                if (num_neighbors !=0)
+                {
+                    occupation_ratio = (double)num_occupied/(double)num_neighbors;
+                }
+
+
+                //if (octree_target->isNodeOccupied(*it) && flg_found_at_least_one_occupied == false && flg_found_neighbors == true) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
+                if (octree_model->isNodeOccupied(*it) && occupation_ratio <= missing_threshold && num_neighbors !=0) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
+                {
+                    //Inconsistencies of type exceeding 
+                    // Add the inconsistency cell into a vector
+                    vi_missing.push_back(model_cell);
+
+                    ma_inconsistencies.markers.push_back(model_cell.getMarkerCubeVolume("target_inconsistent", octree_frame_id, color_inconsistent_missing, ++id_inconsistencies));
+                }
+            }
+    }
+
+
+    
     //Build the queue
     vector<size_t> queue;
     for (size_t i=0; i != vi.size(); ++i)
@@ -582,10 +528,8 @@ void compareCallback(const ros::TimerEvent&)
 
 
 
-    ROS_INFO("Inconsistencies vecotr has %ld cells", vi.size());
+    ROS_INFO("Inconsistencies vector has %ld cells", vi.size());
 
-    ros::Duration d = (ros::Time::now() - t);
-    ROS_INFO("Comparisson took %f secs", d.toSec());
 
 
 /* _________________________________
@@ -714,56 +658,48 @@ void compareCallback(const ros::TimerEvent&)
 
 
     //Delete
-    visualization_msgs::MarkerArray ma_deleteall;
-    visualization_msgs::Marker marker;
-    marker.header.stamp = ros::Time();
-    marker.header.frame_id = octree_frame_id ;
-    marker.ns = "clusters";
-    //marker.action = visualization_msgs::Marker::DELETEALL;
-    marker.action = 3;
-    ma_deleteall.markers.push_back(marker);
-    marker_pub_clusters->publish(ma_deleteall);
+    //visualization_msgs::MarkerArray ma_deleteall;
+    //visualization_msgs::Marker marker;
+    //marker.header.stamp = ros::Time();
+    //marker.header.frame_id = octree_frame_id ;
+    //marker.ns = "clusters";
+    ////marker.action = visualization_msgs::Marker::DELETEALL;
+    //marker.action = 3;
+    //ma_deleteall.markers.push_back(marker);
+    //marker_pub_clusters->publish(ma_deleteall);
 
-    ma_deleteall.markers[0].ns = "target_inconsistent";
-    marker_pub_inconsistencies->publish(ma_deleteall);
-
-    marker_pub_inconsistencies->publish(ma_deleteall);
-
-
-    marker_pub_inconsistencies->publish(ma_inconsistencies);
-    marker_pub_clusters->publish(ma_clusters);
+    //ma_deleteall.markers[0].ns = "target_inconsistent";
+    //marker_pub_inconsistencies->publish(ma_deleteall);
+    //marker_pub_inconsistencies->publish(ma_deleteall);
 
     //ros::Duration(0.05).sleep();
+
+    //marker_deleteall.ns = "target_inconsistent";
+    //ma_inconsistencies.markers.insert(ma_inconsistencies.markers.begin(), 0, marker_deleteall);
+    marker_pub_inconsistencies->publish(ma_inconsistencies);
+    marker_pub_clusters->publish(ma_clusters);
 
     marker_pub->publish(ma);
 
     marker_pub_center_of_mass->publish(ma_centerofmass);
 
     //publish colored point cloud
-    cout << "Waiting for a point_cloud2 on topic " << "/camera/depth_registered/points" << endl;
-    sensor_msgs::PointCloud2::ConstPtr pcmsg = ros::topic::waitForMessage<sensor_msgs::PointCloud2>("/camera/depth_registered/points", *nh, ros::Duration(0.5));
-
-    ros::spinOnce();
-    if (!pcmsg)
+    //double time_to_wait_for_point_cloud = 0.1;
+    //ros::Time t_point_cloud = ros::Time::now();
+    //ROS_INFO_STREAM("Waiting for a point_cloud2 on topic " << "/camera/depth_registered/points");
+    //sensor_msgs::PointCloud2::ConstPtr pcmsg = ros::topic::waitForMessage<sensor_msgs::PointCloud2>("/camera/depth_registered/points", *nh, ros::Duration(time_to_wait_for_point_cloud));
+    //ros::spinOnce();
+    if (!flg_received_point_cloud)
     {
-        ROS_ERROR_STREAM("No point_cloud2 has been received after " << 0.5 << "secs");
+        ROS_ERROR_STREAM("No point_cloud2 has been received yet");
     }
     else
     {
-        ROS_INFO_STREAM("Received point cloud");
-
-        pcl::fromROSMsg(*pcmsg, *pc);
-
-        //bool    transformPointCloud (const std::string &target_frame, const pcl::PointCloud< PointT > &cloud_in, pcl::PointCloud< PointT > &cloud_out, const tf::TransformListener &tf_listener)
-        //pcl_ros::transformPointCloud(octree_frame_id, pc, pc, listener);
-        //pcl_ros::transformPointCloud<pcl::PointXYZRGB>(octree_frame_id, pc, pc, listener);
+        ROS_INFO("Processing point cloud ...");
+        *pc = *pcin;
         pcl_ros::transformPointCloud(octree_frame_id, *pc, *pc, *listener);
-
-        //pcl::transformPointCloud (*camera_ref_system, *shelf_ref_system, t); 
-        //
-        //
-        //
-        //ROS_ERROR("There are %ld points the point cloud", pc->size());
+        *pc2 = *pc;
+        pc2->points.erase(pc2->points.begin(), pc2->points.end());
 
         for (size_t k = 0; k < selected_cluster.size(); ++k)
         {
@@ -787,16 +723,23 @@ void compareCallback(const ros::TimerEvent&)
                 uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
                 //p.rgb = *reinterpret_cast<float*>(&rgb);
                 pc->points[lpoints[i]].rgb = *reinterpret_cast<float*>(&rgb);;
+                pc2->points.push_back(pc->points[lpoints[i]]);
 
             }
         }
 
+
+        pc2->is_dense = false;
+        pc2->width = pc2->points.size();
+        pc2->height = 1;
         sensor_msgs::PointCloud2 pcmsgout;
-        pcl::toROSMsg(*pc, pcmsgout);
+        pcl::toROSMsg(*pc2, pcmsgout);
         pub_pointcloud->publish(pcmsgout);
 
     }
 
+    ros::Duration d = (ros::Time::now() - t);
+    ROS_INFO("Comparisson took %f secs", d.toSec());
 
 }
 
@@ -805,8 +748,12 @@ void callbackDynamicReconfigure(world_model_consistency_check::DepthConfiguratio
 {
     ROS_INFO("Reconfigure Request: Setting comparison depth to %d",  config.depth);
     ROS_INFO("Reconfigure Request: Setting volume threshold to %f",  config.volume_threshold);
+    ROS_INFO("Reconfigure Request: Setting missing threshold to %f",  config.missing_threshold);
+    ROS_INFO("Reconfigure Request: Setting exceeding threshold to %f",  config.exceeding_threshold);
     depth = (unsigned char) config.depth;
     volume_threshold = (double) config.volume_threshold;
+    missing_threshold = (double) config.missing_threshold;
+    exceeding_threshold = (double) config.exceeding_threshold;
 }
 
 int main (int argc, char** argv)
@@ -833,11 +780,14 @@ int main (int argc, char** argv)
 
 
     pc = (pcl::PointCloud<pcl::PointXYZRGB>::Ptr) new (pcl::PointCloud<pcl::PointXYZRGB>);
+    pc2 = (pcl::PointCloud<pcl::PointXYZRGB>::Ptr) new (pcl::PointCloud<pcl::PointXYZRGB>);
+    pcin = (pcl::PointCloud<pcl::PointXYZRGB>::Ptr) new (pcl::PointCloud<pcl::PointXYZRGB>);
 
     ros::Subscriber sub_model = nh->subscribe(topic_model, 0, octomapCallbackModel);
     ros::Subscriber sub_target = nh->subscribe(topic_target, 0, octomapCallbackTarget);
+    ros::Subscriber sub_pointcloud = nh->subscribe(topic_point_cloud, 0, pointCloudCallback);
 
-    ros::Timer timer = nh->createTimer(ros::Duration(2), compareCallback);
+    ros::Timer timer = nh->createTimer(ros::Duration(0.3), compareCallback);
 
     marker_pub = (boost::shared_ptr<ros::Publisher>) (new ros::Publisher);
     *marker_pub = nh->advertise<visualization_msgs::MarkerArray>("/target_volume", 10);

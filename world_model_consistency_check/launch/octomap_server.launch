@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="camera" default="kinect"/>
-  <arg name="frame_id" default="$(arg camera)_rgb_optical_frame"/>
+  <arg name="point_cloud_in" default="camera/depth/registered/points"/>
+  <arg name="frame_id" default="camera_rgb_optical_frame"/>
   <node pkg="octomap_server" type="octomap_server_node" name="octomap_server">
-    <param name="resolution" value="0.02"/>
+    <param name="resolution" value="0.04"/>
     <!--<param name="resolution" value="0.01" />-->
     <!--<param name="resolution" value="0.1" />-->
     <!-- fixed map frame (set to 'map' if SLAM or localization running!) -->
@@ -12,14 +12,14 @@
     <!--<param name="frame_id" type="string" value="/kinect_rgb_optical_frame" />-->
     <param name="latch" type="bool" value="false"/>
     <!-- maximum range to integrate (speedup!) -->
-    <param name="sensor_model/max_range" value="3.0"/>
+    <param name="sensor_model/max_range" value="4.0"/>
     <!-- data source to integrate (PointCloud2) -->
-    <remap from="cloud_in" to="/$(arg camera)/depth_registered/points"/>
+    <remap from="cloud_in" to="/$(arg point_cloud_in)"/>
     <param name="publish_free_space" value="true"/>
-    <param name="sensor_model/hit" value="0.8"/>
-    <param name="sensor_model/miss" value="0.01"/>
-    <!--<param name="sensor_model/hit" value="0.7"/>-->
-    <!--<param name="sensor_model/miss" value="0.4"/>-->
+    <!--<param name="sensor_model/hit" value="0.8"/>-->
+    <!--<param name="sensor_model/miss" value="0.01"/>-->
+    <param name="sensor_model/hit" value="0.7"/>
+    <param name="sensor_model/miss" value="0.4"/>
     <!--<param name="save_directory" value="$(optenv OCTOMAP_SAVE_DIR ./)" />-->
     <!--<param name="save_directory" value="home/mike/octomap_saves" />-->
   </node>
