@@ -155,6 +155,13 @@ class ClassBoundingBox
 
         }
 
+        void setBoundingBox(double min_x, double max_x, double min_y, double max_y, double min_z, double max_z)
+        {
+            _min_x = min_x; _max_x = max_x;
+            _min_y = min_y; _max_y = max_y;
+            _min_z = min_z; _max_z = max_z;
+        }
+
     protected:
 
         double _min_x;
