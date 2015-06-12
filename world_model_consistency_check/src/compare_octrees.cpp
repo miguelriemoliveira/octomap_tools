@@ -769,6 +769,7 @@ void compareCallback(const ros::TimerEvent&)
         marker.id = id_ma_centerofmass; //   ATENTION!!
         marker.type = visualization_msgs::Marker::SPHERE;
         marker.action = visualization_msgs::Marker::ADD;
+        marker.lifetime = ros::Duration(0.5);
 
         marker.pose.position.x = averageX;
         marker.pose.position.y = averageY;
@@ -868,23 +869,28 @@ void compareCallback(const ros::TimerEvent&)
 
         // double to string
         std::ostringstream os;
+        char ss[1024];
 
-        os << cluster_volume;
-        std::string str_volume = os.str();
+        sprintf(ss, "%0.6f", cluster_volume);
+        std::string str_volume = ss;
         
-        os << averageX;
-        std::string str_averageX = os.str();
+        sprintf(ss, "%0.3f", averageX);
+        std::string str_averageX = ss;
 
-        os << averageY;
-        std::string str_averageY = os.str();
+        sprintf(ss, "%0.3f", averageY);
+        std::string str_averageY = ss;
 
-        os << averageZ;
-        std::string str_averageZ = os.str();
+        sprintf(ss, "%0.3f", averageZ);
+        std::string str_averageZ = ss;
 
         // marker_volume.text = std::string("Volume: ") + str_volume + "\n";
         marker_volume.text = std::string("X: ") + str_averageX + std::string(" Y: ") + str_averageY + std::string(" Z: ") + str_averageZ + "\n" + std::string("Volume: ") + str_volume;
 
-        marker_volume.scale.z = 0.1; // Size of Text
+        marker_volume.scale.z = 0.05; // Size of Text
+        marker_volume.color.a = 1;
+        marker_volume.color.r = 1;
+        marker_volume.color.g = 1;
+        marker_volume.color.b = 1;
 
         marker_volume.lifetime = ros::Duration(0.5);
 
@@ -957,6 +963,7 @@ void compareCallback(const ros::TimerEvent&)
         marker.id = id_ma_centerofmass; //   ATENTION!!
         marker.type = visualization_msgs::Marker::SPHERE;
         marker.action = visualization_msgs::Marker::ADD;
+        marker.lifetime = ros::Duration(0.5);
 
         marker.pose.position.x = averageX;
         marker.pose.position.y = averageY;

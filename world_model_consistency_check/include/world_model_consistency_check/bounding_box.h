@@ -92,7 +92,7 @@ class ClassBoundingBox
         {
             visualization_msgs::Marker m = createMarker(ns, frame_id, color, id);
             m.type = visualization_msgs::Marker::LINE_STRIP;
-            m.scale.x = 0.002;
+            m.scale.x = 0.02;
             getEdgesToDraw(m.points);
             return m;
         }
@@ -112,6 +112,9 @@ class ClassBoundingBox
         }
 
         double getSize(void) {return _max_x - _min_x;};
+        double getSizeX(void) {return _max_x - _min_x;};
+        double getSizeY(void) {return _max_y - _min_y;};
+        double getSizeZ(void) {return _max_z - _min_z;};
         double getVolume(void) {return getSize()*getSize()*getSize();};
 
         point3d getCenter(void) 
