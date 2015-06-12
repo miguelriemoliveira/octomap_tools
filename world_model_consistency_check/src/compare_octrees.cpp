@@ -96,6 +96,7 @@ boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > pcin;
 boost::shared_ptr<ros::Publisher> pub;
 boost::shared_ptr<ros::Publisher> marker_pub;
 boost::shared_ptr<ros::Publisher> marker_pub_center_of_mass;
+boost::shared_ptr<ros::Publisher> marker_pub_volume;
 boost::shared_ptr<ros::Publisher> marker_pub_inconsistencies;
 boost::shared_ptr<ros::Publisher> marker_pub_clusters;
 boost::shared_ptr<ros::Publisher> pub_pointcloud;
@@ -791,8 +792,108 @@ void compareCallback(const ros::TimerEvent&)
 
         id_ma_centerofmass++;
 
+
+
+
     }
 
+
+    /* ______________________________________
+       |                                      |
+       |    Exceeding Clusters                |
+       |________________________________      | */
+
+    // ----------------------------------------------------
+    // ----------- Print Volume of Clusters ---------------
+    // ----------------------------------------------------
+
+    // Visualization Message Marker Array for the center of mass
+    visualization_msgs::MarkerArray ma_volumeText;
+    int id_ma_volume = 0;
+
+    for (size_t m = 0; m < selected_cluster.size(); ++m)
+    {
+
+        double totalX = 0;
+        double totalY = 0;
+        double totalZ = 0;
+
+        for (size_t n = 0; n < selected_cluster[m].size(); ++n)
+        {
+
+            size_t cluster_aux = selected_cluster[m][n];
+
+            // double total_volume += vi[cluster_aux].getVolume();
+            // double totalX += vi[cluster_aux].getCenter().x() * vi[cluster_aux].getVolume();
+
+            // Calculate the sum of X
+            totalX += vi[cluster_aux].getCenter().x();
+
+            // Calculate the sum of Y
+            totalY += vi[cluster_aux].getCenter().y();
+
+            // Calculate the sum of Z
+            totalZ += vi[cluster_aux].getCenter().z();
+        }
+
+        // Calculate the average of X
+        double averageX = 0;
+        averageX = totalX / selected_cluster[m].size();
+
+        // Calculate the average of Y
+        double averageY = 0;
+        averageY = totalY / selected_cluster[m].size();
+
+        // Calculate the average of Z
+        double averageZ = 0;
+        averageZ = totalZ / selected_cluster[m].size();
+
+        // Compute the volume
+        //Assume all cells have the same volume
+        double cell_volume = vi[selected_cluster[m][0]].getVolume();
+        double cluster_volume = cell_volume * selected_cluster[m].size();
+
+        // Create the marker
+        visualization_msgs::Marker marker_volume;
+        marker_volume.header.frame_id = octree_frame_id ;
+        marker_volume.header.stamp = ros::Time();
+        marker_volume.ns = "volume";
+        marker_volume.id = id_ma_volume; //   ATENTION!!
+        marker_volume.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+        marker_volume.action = visualization_msgs::Marker::ADD;
+
+        marker_volume.pose.position.x = averageX;
+        marker_volume.pose.position.y = averageY;
+        marker_volume.pose.position.z = averageZ;
+
+        // double to string
+        std::ostringstream os;
+
+        os << cluster_volume;
+        std::string str_volume = os.str();
+        
+        os << averageX;
+        std::string str_averageX = os.str();
+
+        os << averageY;
+        std::string str_averageY = os.str();
+
+        os << averageZ;
+        std::string str_averageZ = os.str();
+
+        // marker_volume.text = std::string("Volume: ") + str_volume + "\n";
+        marker_volume.text = std::string("X: ") + str_averageX + std::string(" Y: ") + str_averageY + std::string(" Z: ") + str_averageZ + "\n" + std::string("Volume: ") + str_volume;
+
+        marker_volume.scale.z = 0.1; // Size of Text
+
+        marker_volume.lifetime = ros::Duration(0.5);
+
+        ma_volumeText.markers.push_back(marker_volume);
+
+        id_ma_volume++;
+
+
+    }
 
 
 
@@ -908,6 +1009,8 @@ void compareCallback(const ros::TimerEvent&)
 
     marker_pub_center_of_mass->publish(ma_centerofmass);
 
+    marker_pub_volume->publish(ma_volumeText);
+
     //publish colored point cloud
     //double time_to_wait_for_point_cloud = 0.1;
     //ros::Time t_point_cloud = ros::Time::now();
@@ -1019,6 +1122,9 @@ int main (int argc, char** argv)
 
     marker_pub_center_of_mass = (boost::shared_ptr<ros::Publisher>) (new ros::Publisher);
     *marker_pub_center_of_mass = nh->advertise<visualization_msgs::MarkerArray>("/center_of_mass", 10);
+
+    marker_pub_volume = (boost::shared_ptr<ros::Publisher>) (new ros::Publisher);
+    *marker_pub_volume = nh->advertise<visualization_msgs::MarkerArray>("/volume", 10);
 
     marker_pub_inconsistencies = (boost::shared_ptr<ros::Publisher>) (new ros::Publisher);
     *marker_pub_inconsistencies = nh->advertise<visualization_msgs::MarkerArray>("/inconsistencies", 10);
