@@ -112,6 +112,21 @@ class ClassBoundingBox
         }
 
         double getSize(void) {return _max_x - _min_x;};
+
+        void setSize(double x, double y, double z)
+        {
+            point3d p =  getCenter(); 
+            _min_x = p.x() - x/2;
+            _max_x = p.x() + x/2;
+
+            _min_y = p.y() - y/2;
+            _max_y = p.y() + y/2;
+
+            _min_z = p.z() - z/2;
+            _max_z = p.z() + z/2;
+        };
+
+
         double getSizeX(void) {return _max_x - _min_x;};
         double getSizeY(void) {return _max_y - _min_y;};
         double getSizeZ(void) {return _max_z - _min_z;};
@@ -165,6 +180,9 @@ class ClassBoundingBox
             _min_z = min_z; _max_z = max_z;
         }
 
+    public: 
+        bool occupied; //
+
     protected:
 
         double _min_x;
@@ -173,6 +191,7 @@ class ClassBoundingBox
         double _max_y;
         double _min_z;
         double _max_z;
+
 };
 
 #endif
