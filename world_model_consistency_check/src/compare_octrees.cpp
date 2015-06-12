@@ -126,9 +126,9 @@ AbstractOcTree* model_tree;
 AbstractOcTree* target_tree;
 
 /* _________________________________
-  |                                 |
-  |           Callbacks             |
-  |_________________________________| */
+   |                                 |
+   |           Callbacks             |
+   |_________________________________| */
 
 void octomapCallbackModel(const octomap_msgs::Octomap::ConstPtr& msg)
 {
@@ -237,15 +237,17 @@ void compareCallback(const ros::TimerEvent&)
     {
         if (octree_target->search(it.getKey())) // Verifies if the node exists
         {
-            ClassBoundingBox target_cell(it.getX(), it.getY(), it.getZ(), it.getSize());
-            //bool flg_found_at_least_one_occupied = false;
-            //bool flg_found_neighbors = false;
-            //int count =0;
-            size_t num_occupied = 0;
-            size_t num_neighbors = 0;
+            if (octree_target->isNodeOccupied(*it)) 
+            {
+                ClassBoundingBox target_cell(it.getX(), it.getY(), it.getZ(), it.getSize());
+                //bool flg_found_at_least_one_occupied = false;
+                //bool flg_found_neighbors = false;
+                //int count =0;
+                size_t num_occupied = 0;
+                size_t num_neighbors = 0;
 
-            ma.markers.push_back(target_cell.getMarkerWithEdges("target_occupied", octree_frame_id , color_occupied, ++id));
-            
+                ma.markers.push_back(target_cell.getMarkerWithEdges("target_occupied", octree_frame_id , color_occupied, ++id));
+
                 // -------------------------------------------------------------
                 // ----------- Iterate over model octree ----------------------
                 // -------------------------------------------------------------
@@ -275,8 +277,7 @@ void compareCallback(const ros::TimerEvent&)
                 }
 
 
-                //if (octree_target->isNodeOccupied(*it) && flg_found_at_least_one_occupied == false && flg_found_neighbors == true) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
-                if (octree_target->isNodeOccupied(*it) && occupation_ratio <= exceeding_threshold && num_neighbors !=0) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
+                if (occupation_ratio <= exceeding_threshold && num_neighbors !=0) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
                 {
                     //Inconsistencies of type exceeding 
                     // Add the inconsistency cell into a vector
@@ -284,18 +285,10 @@ void compareCallback(const ros::TimerEvent&)
 
                     ma_inconsistencies.markers.push_back(target_cell.getMarkerCubeVolume("target_inconsistent", octree_frame_id, color_inconsistent, ++id_inconsistencies));
                 }
-                //else if(!octree_target->isNodeOccupied(*it) && flg_found_at_least_one_occupied == true && flg_found_neighbors == true)
-                
-                //if(!octree_target->isNodeOccupied(*it) && occupation_ratio >= missing_threshold && num_neighbors!=0)
-                //{
-                    ////Inconsistencies of type missing 
-                     //vi_missing.push_back(target_cell);
-
-                    //ma_inconsistencies.markers.push_back(target_cell.getMarkerCubeVolume("target_inconsistent_missing", octree_frame_id, color_inconsistent_missing, ++id_inconsistencies));
-               
-                //}
+            }
         }
     }
+
 
 
     // -------------------------------------------------------------
@@ -305,15 +298,17 @@ void compareCallback(const ros::TimerEvent&)
     {
         if (octree_model->search(it.getKey())) // Verifies if the node exists
         {
-            ClassBoundingBox model_cell(it.getX(), it.getY(), it.getZ(), it.getSize());
-            //bool flg_found_at_least_one_occupied = false;
-            //bool flg_found_neighbors = false;
-            //int count =0;
-            size_t num_occupied = 0;
-            size_t num_neighbors = 0;
+            if (octree_model->isNodeOccupied(*it))
+            {
+                ClassBoundingBox model_cell(it.getX(), it.getY(), it.getZ(), it.getSize());
+                //bool flg_found_at_least_one_occupied = false;
+                //bool flg_found_neighbors = false;
+                //int count =0;
+                size_t num_occupied = 0;
+                size_t num_neighbors = 0;
 
-            ma.markers.push_back(model_cell.getMarkerWithEdges("model_occupied", octree_frame_id , color_occupied, ++id));
-            
+                ma.markers.push_back(model_cell.getMarkerWithEdges("model_occupied", octree_frame_id , color_occupied, ++id));
+
                 // -------------------------------------------------------------
                 // ----------- Iterate over model octree ----------------------
                 // -------------------------------------------------------------
@@ -344,7 +339,7 @@ void compareCallback(const ros::TimerEvent&)
 
 
                 //if (octree_target->isNodeOccupied(*it) && flg_found_at_least_one_occupied == false && flg_found_neighbors == true) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
-                if (octree_model->isNodeOccupied(*it) && occupation_ratio <= missing_threshold && num_neighbors !=0) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
+                if (occupation_ratio <= missing_threshold && num_neighbors !=0) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
                 {
                     //Inconsistencies of type exceeding 
                     // Add the inconsistency cell into a vector
@@ -353,10 +348,16 @@ void compareCallback(const ros::TimerEvent&)
                     ma_inconsistencies.markers.push_back(model_cell.getMarkerCubeVolume("target_inconsistent", octree_frame_id, color_inconsistent_missing, ++id_inconsistencies));
                 }
             }
+        }
     }
 
 
-    
+
+    /* _________________________________
+       |                                 |
+       |     for the exceeding clusters  |
+       |_________________________________| */
+
     //Build the queue
     vector<size_t> queue;
     for (size_t i=0; i != vi.size(); ++i)
@@ -443,14 +444,98 @@ void compareCallback(const ros::TimerEvent&)
     }
 
 
+    /* _________________________________
+       |                                 |
+       |     for the missing clusters    |
+       |_________________________________| */
 
-    //char name[50];
-    //cout << "press a key to continue";
-    //cin >> name;
+    //Build the queue
+    vector<size_t> queue_missing;
+    for (size_t i=0; i != vi_missing.size(); ++i)
+    {
+        queue_missing.push_back(i);
+    }
 
+    vector< vector<size_t> > cluster_missing; 
+
+    while (queue_missing.size() != 0)
+    {
+        //Select new seed
+        size_t seed = queue_missing[0]; 
+        queue_missing.erase(queue_missing.begin() + 0); //remove first element
+
+        // ROS_INFO("Selected seed point %ld, queue has size=%ld", seed, queue.size());
+
+        //Create new cluster
+        vector<size_t> tmp;
+        cluster_missing.push_back(tmp);
+
+        ROS_INFO("Created cluster_missing %ld ", cluster_missing.size());
+
+        //Expand seed
+        vector <size_t> flood;
+        flood.push_back(seed);
+
+
+        while (flood.size() != 0)
+        {
+
+            //ROS_INFO("Expanding first elem of flood (size %ld) idx = %ld", flood.size(), flood[0]);
+            //expand flood[j]
+            size_t idx_b1 = flood[0];
+
+
+            //ROS_INFO("Checking of queue size %ld", queue.size());
+            for (size_t j=0; j < queue_missing.size(); ++j) 
+            {
+                size_t idx_b2 = queue_missing[j]; 
+
+                //ROS_INFO("Checking idx_b1 %ld idx_b2 %ld", idx_b1, idx_b2);
+
+
+                //char name[50];
+                //cout << "press a key to continue";
+                //cin >> name;
+
+                if (are_neighbors(vi_missing[idx_b1], vi_missing[idx_b2]))
+                {
+                    //ROS_INFO("Found neighbor idx %ld", idx_b2);
+                    flood.push_back(idx_b2);
+                    queue_missing.erase(queue_missing.begin() + j);
+                    //TODO should be b2 or b1?
+
+                }
+                else
+                {
+                    //nothing to do 
+                }
+            }
+
+
+
+            //add first elem of floodto cluster
+            cluster_missing.at(cluster_missing.size()-1).push_back(flood[0]); //add seed point to cluster
+
+            //remove first elem of  flood
+            flood.erase(flood.begin() + 0);
+
+        }
+
+
+        ROS_INFO("Created cluster_missing %ld with %ld points", cluster_missing.size(), cluster_missing[cluster_missing.size()-1].size());
+
+
+
+    }
+
+    //Information about clusters
 
     ROS_INFO("There are %ld clusters", cluster.size());
     class_colormap cluster_colors("autumn", cluster.size(), 0.8);
+
+    ROS_INFO("There are %ld clusters_missing", cluster_missing.size());
+    class_colormap cluster_missing_colors("winter", cluster_missing.size(), 0.8, true);
+
     // ROS_INFO("Number of clusters found %ld", cluster.size());
     // for (size_t i=0; i < cluster.size(); ++i)
     // {
@@ -531,11 +616,11 @@ void compareCallback(const ros::TimerEvent&)
     ROS_INFO("Inconsistencies vector has %ld cells", vi.size());
 
 
-
-/* _________________________________
-  |                                       |
-  |Filter clusters using volume threshold |
-  |_________________________________      | */
+    /* ______________________________________
+       | 
+       |    Exceeding Clusters                |
+       |________________________________      | */
+    //Filter clusters using volume threshold |
 
     vector< vector<size_t> > selected_cluster; 
 
@@ -567,13 +652,59 @@ void compareCallback(const ros::TimerEvent&)
     // Iterates once per cluster
     for (size_t k = 0; k < selected_cluster.size(); ++k)
     {
-            // Iterates once per point of the cluster
-            for (size_t l = 0; l < selected_cluster[k].size(); ++l)
-            {
-                size_t cluster_aux = selected_cluster[k][l];
-                ma_clusters.markers.push_back(vi[cluster_aux].getMarkerCubeVolume("clusters", octree_frame_id, cluster_colors.color(k), ++id_clusters));
-            }
+        // Iterates once per point of the cluster
+        for (size_t l = 0; l < selected_cluster[k].size(); ++l)
+        {
+            size_t cluster_aux = selected_cluster[k][l];
+            ma_clusters.markers.push_back(vi[cluster_aux].getMarkerCubeVolume("clusters", octree_frame_id, cluster_colors.color(k), ++id_clusters));
+        }
     }
+
+
+    /* ______________________________________
+       | 
+       |    Missing Clusters                  |
+       |________________________________      | */
+    //Filter clusters using volume threshold |
+    vector< vector<size_t> > selected_cluster_missing; 
+
+    for (size_t k = 0; k < cluster_missing.size(); ++k)
+    {
+        //Assume all cells have the same volume
+        double cell_volume = vi_missing[cluster_missing[k][0]].getVolume();
+        double cluster_volume = cell_volume * cluster_missing[k].size();
+
+        if (cluster_volume > volume_threshold)
+        {
+            vector<size_t> tmp;
+            // Iterates once per point of the cluster
+            for (size_t l = 0; l < cluster_missing[k].size(); ++l)
+            {
+                size_t cluster_aux = cluster_missing[k][l];
+                tmp.push_back(cluster_missing[k][l]);
+            }
+            selected_cluster_missing.push_back(tmp);
+        }
+    }
+    ROS_INFO("Selected %ld clusters_missing using volume threshold", selected_cluster_missing.size());
+
+
+
+    // ----------------------------------------------------
+    // --------- Draws clusters on visualizer -------------
+
+    // Iterates once per cluster
+    for (size_t k = 0; k < selected_cluster_missing.size(); ++k)
+    {
+        // Iterates once per point of the cluster_missing
+        for (size_t l = 0; l < selected_cluster_missing[k].size(); ++l)
+        {
+            size_t cluster_aux = selected_cluster_missing[k][l];
+            ma_clusters.markers.push_back(vi_missing[cluster_aux].getMarkerCubeVolume("clusters", octree_frame_id, cluster_missing_colors.color(k), ++id_clusters));
+        }
+    }
+
+
 
 
     // ----------------------------------------------------
