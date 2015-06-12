@@ -617,7 +617,7 @@ void compareCallback(const ros::TimerEvent&)
 
 
     /* ______________________________________
-       | 
+       |                                      |
        |    Exceeding Clusters                |
        |________________________________      | */
     //Filter clusters using volume threshold |
@@ -707,6 +707,12 @@ void compareCallback(const ros::TimerEvent&)
 
 
 
+
+    /* ______________________________________
+       |                                      |
+       |    Exceeding Clusters                |
+       |________________________________      | */
+
     // ----------------------------------------------------
     // ----------- Center of Mass of Clusters -------------
     // ----------------------------------------------------
@@ -753,7 +759,95 @@ void compareCallback(const ros::TimerEvent&)
         double averageZ = 0;
         averageZ = totalZ / selected_cluster[m].size();
 
-        ROS_INFO("Averages for Cluster[%ld]: X: %f, Y: %f, Z: %f", m, averageX, averageY, averageZ);
+        ROS_INFO("Averages for Cluster Exceeding[%ld]: X: %f, Y: %f, Z: %f", m, averageX, averageY, averageZ);
+
+        visualization_msgs::Marker marker;
+        marker.header.frame_id = octree_frame_id ;
+        marker.header.stamp = ros::Time();
+        marker.ns = "centerOfMass";
+        marker.id = id_ma_centerofmass; //   ATENTION!!
+        marker.type = visualization_msgs::Marker::SPHERE;
+        marker.action = visualization_msgs::Marker::ADD;
+
+        marker.pose.position.x = averageX;
+        marker.pose.position.y = averageY;
+        marker.pose.position.z = averageZ;
+
+        marker.pose.orientation.x = 0.0;
+        marker.pose.orientation.y = 0.0;
+        marker.pose.orientation.z = 0.0;
+        marker.pose.orientation.w = 1.0;
+
+        marker.scale.x = 0.1;
+        marker.scale.y = 0.1;
+        marker.scale.z = 0.1;
+
+        marker.color.a = 0.8; // Don't forget to set the alpha!
+        marker.color.r = 1.0;
+        marker.color.g = 0.0;
+        marker.color.b = 0.0;
+
+        ma_centerofmass.markers.push_back(marker);
+
+        id_ma_centerofmass++;
+
+    }
+
+
+
+
+    /* ______________________________________
+       |                                      |
+       |    Missing Clusters                  |
+       |________________________________      | */
+       
+    // ----------------------------------------------------
+    // ----------- Center of Mass of Clusters -------------
+    // ----------------------------------------------------
+
+    // // Visualization Message Marker Array for the center of mass
+    // visualization_msgs::MarkerArray ma_centerofmass;
+    // int id_ma_centerofmass = 0;
+
+
+    for (size_t m = 0; m < selected_cluster_missing.size(); ++m)
+    {
+
+        double totalX = 0;
+        double totalY = 0;
+        double totalZ = 0;
+
+        for (size_t n = 0; n < selected_cluster_missing[m].size(); ++n)
+        {
+
+            size_t cluster_aux = selected_cluster_missing[m][n];
+
+            // double total_volume += vi[cluster_aux].getVolume();
+            // double totalX += vi[cluster_aux].getCenter().x() * vi[cluster_aux].getVolume();
+
+            // Calculate the sum of X
+            totalX += vi_missing[cluster_aux].getCenter().x();
+
+            // Calculate the sum of Y
+            totalY += vi_missing[cluster_aux].getCenter().y();
+
+            // Calculate the sum of Z
+            totalZ += vi_missing[cluster_aux].getCenter().z();
+        }
+
+        // Calculate the average of X
+        double averageX = 0;
+        averageX = totalX / selected_cluster_missing[m].size();
+
+        // Calculate the average of Y
+        double averageY = 0;
+        averageY = totalY / selected_cluster_missing[m].size();
+
+        // Calculate the average of Z
+        double averageZ = 0;
+        averageZ = totalZ / selected_cluster_missing[m].size();
+
+        ROS_INFO("Averages for Cluster Missing[%ld]: X: %f, Y: %f, Z: %f", m, averageX, averageY, averageZ);
 
         visualization_msgs::Marker marker;
         marker.header.frame_id = octree_frame_id ;
