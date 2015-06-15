@@ -7,11 +7,21 @@ project(interactive_region_definition)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
+  roslib
   std_msgs
   rviz
   world_model_consistency_check
   colormap
+  rospack
+  octomap_msgs
+  pcl_ros
+  tf
 )
+
+
+find_package(octomap REQUIRED)
+include_directories(${OCTOMAP_INCLUDE_DIRS})
+link_libraries(${OCTOMAP_LIBRARIES})
 
 find_package(PCL 1.2 REQUIRED)
 include_directories(${PCL_INCLUDE_DIRS})
@@ -91,7 +101,7 @@ add_definitions(${PCL_DEFINITIONS})
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES interactive_region_definition
-#  CATKIN_DEPENDS roscpp rospy std_msgs
+  #CATKIN_DEPENDS roscpp roslib rospack
 #  DEPENDS system_lib
 )
 
@@ -112,21 +122,21 @@ include_directories(
 # )
 
 ## Declare a cpp executable
-add_executable(interactive_region_definition src/interactive_region_definition.cpp)
+#add_executable(interactive_region_definition src/interactive_region_definition.cpp)
+#target_link_libraries(interactive_region_definition
+   #${PCL_LIBRARIES} ${OCTOMAP_LIBRARIES} ${catkin_LIBRARIES}
+#)
+
 add_executable(teste src/teste.cpp)
+target_link_libraries(teste ${PCL_LIBRARIES} ${OCTOMAP_LIBRARIES} ${catkin_LIBRARIES} 
+)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(interactive_region_definition_node interactive_region_definition_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(interactive_region_definition
-  ${catkin_LIBRARIES} ${PCL_LIBRARIES}
-)
 
-target_link_libraries(teste
-  ${catkin_LIBRARIES} ${PCL_LIBRARIES}
-)
 
 #############
 ## Install ##

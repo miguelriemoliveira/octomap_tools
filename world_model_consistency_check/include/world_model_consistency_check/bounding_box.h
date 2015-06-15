@@ -3,7 +3,7 @@
 
 #include <ros/ros.h>
 #include <std_msgs/String.h>
-#include <ros/package.h>
+//#include <ros/package.h>
 
 #include <sensor_msgs/PointCloud2.h>
 #include <octomap_msgs/Octomap.h>
@@ -93,6 +93,7 @@ class ClassBoundingBox
             visualization_msgs::Marker m = createMarker(ns, frame_id, color, id);
             m.type = visualization_msgs::Marker::LINE_STRIP;
             m.scale.x = 0.02;
+            m.lifetime = ros::Duration(0.5);
             getEdgesToDraw(m.points);
             return m;
         }

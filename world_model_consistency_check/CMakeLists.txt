@@ -18,7 +18,6 @@ find_package(catkin REQUIRED COMPONENTS
   colormap
   )
 
-
 find_package(octomap REQUIRED)
 include_directories(${OCTOMAP_INCLUDE_DIRS})
 link_libraries(${OCTOMAP_LIBRARIES})
@@ -107,8 +106,8 @@ generate_dynamic_reconfigure_options(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-#  LIBRARIES world_model_consistency_check
-#  CATKIN_DEPENDS other_catkin_pkg
+  LIBRARIES bounding_box
+  CATKIN_DEPENDS octomap_msgs
 #  DEPENDS system_lib
 )
 
@@ -123,28 +122,28 @@ include_directories(include)
 include_directories(${catkin_INCLUDE_DIRS})
 
 ## Declare a cpp library
-# add_library(world_model_consistency_check
-#   src/${PROJECT_NAME}/world_model_consistency_check.cpp
-# )
+ add_library(bounding_box
+   src/bounding_box.cpp
+)
 
 ## Declare a cpp executable
 # add_executable(world_model_consistency_check_node src/world_model_consistency_check_node.cpp)
 
 add_executable(test_unknown_space src/test_unknown_space.cpp)
-target_link_libraries (test_unknown_space ${PCL_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries (test_unknown_space ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
 
 add_executable(compare_octrees src/compare_octrees.cpp src/bounding_box.cpp)
-target_link_libraries (compare_octrees ${PCL_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries (compare_octrees ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} bounding_box )
 add_dependencies(compare_octrees ${PROJECT_NAME}_gencfg)
 
 add_executable(file2octomap_msg src/file2octomap_msg.cpp)
-target_link_libraries (file2octomap_msg ${PCL_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries (file2octomap_msg ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
 
 add_executable(octomap_msg2file src/octomap_msg2file.cpp)
-target_link_libraries (octomap_msg2file ${PCL_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries (octomap_msg2file ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
 
 add_executable(pointcloud2file src/pointcloud2file.cpp)
-target_link_libraries (pointcloud2file ${PCL_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries (pointcloud2file ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes

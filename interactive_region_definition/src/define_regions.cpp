@@ -6,11 +6,21 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/tf.h>
 
+
 #include <math.h>
 
 #include <world_model_consistency_check/bounding_box.h>
 
+#include <ros/package.h> //This include is sufficient to use ros::package::getPath
+//#include <rospack/rospack.h>
+
+
 using namespace visualization_msgs;
+//using namespace ros;
+//using namespace ros::package;
+
+
+
 boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
 interactive_markers::MenuHandler menu_handler;
 boost::shared_ptr<ros::NodeHandle> nh;
@@ -60,9 +70,9 @@ void drawingCallback(const ros::TimerEvent&)
     for (size_t i = 0; i< boxes.size(); ++i)
     {
         if (boxes[i].occupied == true)
-            ma.markers.push_back(boxes[i].getMarkerWithEdges("boxes", "/base_link" , color, ++id));
+            ma.markers.push_back(boxes[i].getMarkerWithEdges("boxes", "/map" , color, ++id));
         else
-            ma.markers.push_back(boxes[i].getMarkerWithEdges("boxes", "/base_link" , color_free, ++id));
+            ma.markers.push_back(boxes[i].getMarkerWithEdges("boxes", "/map" , color_free, ++id));
 
     }
     marker_pub_boxes->publish(ma);
@@ -109,6 +119,104 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
                 boxes.push_back(target_volume);
                 boxes[boxes.size()-1].occupied = true;
             }
+            else if (feedback->menu_entry_id==5) //save to file
+            {
+                ros::NodeHandle nh("~");
+
+                std::vector<double> center_x;
+                std::vector<double> center_y;
+                std::vector<double> center_z;
+                std::vector<double> size_x;
+                std::vector<double> size_y;
+                std::vector<double> size_z;
+                std::vector<bool> is_occupied;
+                std::string frame_id = "map";
+
+
+                for (size_t i=0; i < boxes.size(); ++i)
+                {
+                    point3d p = boxes[i].getCenter();
+                    center_x.push_back(p.x());
+                    center_y.push_back(p.y());
+                    center_z.push_back(p.z());
+                
+                    size_x.push_back(boxes[i].getSizeX());
+                    size_y.push_back(boxes[i].getSizeY());
+                    size_z.push_back(boxes[i].getSizeZ());
+
+                    is_occupied.push_back(boxes[i].occupied);
+                }
+
+                nh.setParam("center_x", center_x);
+                nh.setParam("center_y", center_y);
+                nh.setParam("center_z", center_z);
+
+                nh.setParam("size_x", size_x);
+                nh.setParam("size_y", size_y);
+                nh.setParam("size_z", size_z);
+
+                nh.setParam("is_occupied", is_occupied);
+                nh.setParam("frame_id", frame_id);
+
+                //Problem linking? check http://answers.ros.org/question/196935/roslib-reference-error/
+                string path = ros::package::getPath("interactive_region_definition");
+
+                string cmd = "rosparam dump " + path + "/params/default.yaml " + "/interactive_region_definition";
+                system(cmd.c_str());
+
+
+            }
+            else if (feedback->menu_entry_id==6) //load from file
+            {
+
+                //Problem linking? check http://answers.ros.org/question/196935/roslib-reference-error/
+                string path = ros::package::getPath("interactive_region_definition");
+                string cmd = "rosparam load " + path + "/params/default.yaml " + "/interactive_region_definition";
+                system(cmd.c_str());
+
+                ros::NodeHandle nh("~");
+
+                std::vector<double> center_x;
+                std::vector<double> center_y;
+                std::vector<double> center_z;
+                std::vector<double> size_x;
+                std::vector<double> size_y;
+                std::vector<double> size_z;
+                std::vector<bool> is_occupied;
+                std::string frame_id = "map";
+
+                ros::param::get("~center_x", center_x);
+                ros::param::get("~center_y", center_y);
+                ros::param::get("~center_z", center_z);
+
+                ros::param::get("~size_x", size_x);
+                ros::param::get("~size_y", size_y);
+                ros::param::get("~size_z", size_z);
+
+                ros::param::get("~is_occupied", is_occupied);
+                ros::param::get("~frame_id", frame_id);
+
+                ROS_ERROR("There are %ld loaded boxes", center_x.size());
+
+                ROS_ERROR("There are %ld boxes in memory", boxes.size());
+                //boxes.erase(boxes.begin(), boxes.end());
+                for (size_t i=0; i< center_x.size(); ++i)
+                {
+                    ROS_INFO("center_x[%ld]= %f", i, center_x[i]);
+                    ClassBoundingBox b(center_x[i] - size_x[i]/2, center_x[i] + size_x[i]/2, center_y[i] - size_y[i]/2, center_y[i] + size_y[i]/2, center_z[i] - size_z[i]/2, center_z[i] + size_z[i]/2);
+                    b.occupied = is_occupied[i];
+                    boxes.push_back(b);
+                }
+
+                ROS_ERROR("Now there are %ld boxes in memory", boxes.size());
+
+            }
+            else if (feedback->menu_entry_id==7) //delete all
+            {
+                boxes.erase(boxes.begin(), boxes.end());
+
+            }
+
 
 
 
@@ -148,7 +256,7 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
                 //target_volume.setBoundingBox(pose.position.x - target_volume.getSizeX()/2, pose.position.x + target_volume.getSizeX()/2, pose.position.y - target_volume.getSizeY()/2, pose.position.y + target_volume.getSizeY()/2, pose.position.z - target_volume.getSizeZ()/2, pose.position.z + target_volume.getSizeZ()/2);
 
 
-                //ma.markers.push_back(target_volume.getMarkerWithEdges("target_volume", "/base_link" , color, ++id));
+                //ma.markers.push_back(target_volume.getMarkerWithEdges("target_volume", "/map" , color, ++id));
                 //marker_pub->publish(ma);
 
 
@@ -166,7 +274,8 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
                 target_volume.setBoundingBox(pose.position.x - target_volume.getSizeX()/2, pose.position.x + target_volume.getSizeX()/2, pose.position.y - target_volume.getSizeY()/2, pose.position.y + target_volume.getSizeY()/2, pose.position.z - target_volume.getSizeZ()/2, pose.position.z + target_volume.getSizeZ()/2);
 
 
-                ma.markers.push_back(target_volume.getMarkerWithEdges("target_volume", "/base_link" , color, ++id));
+                ma.markers.push_back(target_volume.getMarkerWithEdges("target_volume", "/map" , color, ++id));
+                ma.markers.at(ma.markers.size()-1).lifetime = ros::Duration(0);
                 marker_pub->publish(ma);
 
 
@@ -179,9 +288,9 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
             }
             else if (feedback->marker_name == "CORNER")
             {
-                double dx = (pose.position.x - (target_volume.getCenter()).x()) * 2;
-                double dy = (pose.position.y - (target_volume.getCenter()).y()) * 2;
-                double dz = (pose.position.z - (target_volume.getCenter()).z()) * 2;
+                double dx = abs(pose.position.x - (target_volume.getCenter()).x()) * 2;
+                double dy = abs(pose.position.y - (target_volume.getCenter()).y()) * 2;
+                double dz = abs(pose.position.z - (target_volume.getCenter()).z()) * 2;
 
                 target_volume.setSize(dx,dy,dz);
 
@@ -198,7 +307,8 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
 
 
                 color.r = .0; color.g = 1.0; color.b = 0; color.a = 1;
-                ma.markers.push_back(target_volume.getMarkerWithEdges("target_volume", "/base_link" , color, ++id));
+                ma.markers.push_back(target_volume.getMarkerWithEdges("target_volume", "/map" , color, ++id));
+                ma.markers.at(ma.markers.size()-1).lifetime = ros::Duration(0);
                 marker_pub->publish(ma);
 
 
@@ -220,9 +330,7 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
 
     server->applyChanges();
 }
-// %EndTag(processFeedback)%
 
-// %Tag(alignMarker)%
 void alignMarker( const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback )
 {
     geometry_msgs::Pose pose = feedback->pose;
@@ -243,7 +351,6 @@ void alignMarker( const visualization_msgs::InteractiveMarkerFeedbackConstPtr &f
     server->setPose( feedback->marker_name, pose );
     server->applyChanges();
 }
-// %EndTag(alignMarker)%
 
 double rand( double min, double max )
 {
@@ -262,12 +369,12 @@ void saveMarker( InteractiveMarker int_marker )
 void make6DofMarker( bool fixed, unsigned int interaction_mode, const tf::Vector3& position, bool show_6dof, std::string name )
 {
     InteractiveMarker int_marker;
-    int_marker.header.frame_id = "base_link";
+    int_marker.header.frame_id = "map";
     tf::pointTFToMsg(position, int_marker.pose.position);
     int_marker.scale = 1;
 
     int_marker.name = name;
-    int_marker.description = "Simple 6-DOF Control";
+    int_marker.description = "";
 
     // insert a box
     makeBoxControl(int_marker);
@@ -333,17 +440,16 @@ void make6DofMarker( bool fixed, unsigned int interaction_mode, const tf::Vector
     if (interaction_mode != visualization_msgs::InteractiveMarkerControl::NONE)
         menu_handler.apply( *server, int_marker.name );
 }
-// %EndTag(6DOF)%
 
 void makeMenuMarker( const tf::Vector3& position )
 {
     InteractiveMarker int_marker;
-    int_marker.header.frame_id = "base_link";
+    int_marker.header.frame_id = "map";
     tf::pointTFToMsg(position, int_marker.pose.position);
     int_marker.scale = 1;
 
     int_marker.name = "MENU";
-    int_marker.description = "Menu \n (Right click)";
+    int_marker.description = "Drag and drop to choose the position and size of the box, Right click for menu";
 
     InteractiveMarkerControl control;
 
@@ -366,19 +472,25 @@ void makeMenuMarker( const tf::Vector3& position )
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "basic_controls");
+    ros::init(argc, argv, "interactive_region_definition");
     ros::NodeHandle n;
 
-    server.reset( new interactive_markers::InteractiveMarkerServer("basic_controls","",false) );
+    std::string path = ros::package::getPath("interactive_region_definition");
+    
+    server.reset( new interactive_markers::InteractiveMarkerServer("interactive_region_definition","",false) );
 
     ros::Duration(0.1).sleep();
 
     //menu_handler.insert( "Define as BBox", &processFeedback );
     //menu_handler.insert( "Define as BBox", &processFeedback );
     //menu_handler.insert( "Second Entry", &processFeedback );
-    interactive_markers::MenuHandler::EntryHandle sub_menu_handle = menu_handler.insert( "Define" );
-    menu_handler.insert( sub_menu_handle, "Free space", &processFeedback );
-    menu_handler.insert( sub_menu_handle, "Occupied space", &processFeedback );
+    interactive_markers::MenuHandler::EntryHandle sub_menu_handle = menu_handler.insert( "New box as" );
+    menu_handler.insert( sub_menu_handle, "free space", &processFeedback );
+    menu_handler.insert( sub_menu_handle, "occupied space", &processFeedback );
+    interactive_markers::MenuHandler::EntryHandle sub_menu_handle1 = menu_handler.insert( "File" );
+    menu_handler.insert( sub_menu_handle1, "Save to file", &processFeedback );
+    menu_handler.insert( sub_menu_handle1, "Load from file", &processFeedback );
+    menu_handler.insert( sub_menu_handle1, "Delete all", &processFeedback );
 
     tf::Vector3 position;
     position = tf::Vector3(-3, 3, 0);
