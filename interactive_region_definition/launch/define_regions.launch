@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="interactive_region_definition" type="define_regions" name="interactive_region_definition" output="screen">
+    <!--<rosparam command="load" file="$(find ur5_with_asus_calibration)/calibration/three_points.yaml"/>-->
+  </node>
+
+  <node name="rviz" pkg="rviz" type="rviz" args="--display-config $(find interactive_region_definition)/config/default.rviz" required="true">
+  </node>
+
+</launch>

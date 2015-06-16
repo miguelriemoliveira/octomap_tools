@@ -484,7 +484,7 @@ int main(int argc, char** argv)
     //menu_handler.insert( "Define as BBox", &processFeedback );
     //menu_handler.insert( "Define as BBox", &processFeedback );
     //menu_handler.insert( "Second Entry", &processFeedback );
-    interactive_markers::MenuHandler::EntryHandle sub_menu_handle = menu_handler.insert( "New box as" );
+    interactive_markers::MenuHandler::EntryHandle sub_menu_handle = menu_handler.insert( "Set box as" );
     menu_handler.insert( sub_menu_handle, "free space", &processFeedback );
     menu_handler.insert( sub_menu_handle, "occupied space", &processFeedback );
     interactive_markers::MenuHandler::EntryHandle sub_menu_handle1 = menu_handler.insert( "File" );
@@ -493,33 +493,12 @@ int main(int argc, char** argv)
     menu_handler.insert( sub_menu_handle1, "Delete all", &processFeedback );
 
     tf::Vector3 position;
-    position = tf::Vector3(-3, 3, 0);
-    // make6DofMarker( false, visualization_msgs::InteractiveMarkerControl::NONE, position, true );
-    // position = tf::Vector3( 0, 3, 0);
-    // make6DofMarker( true, visualization_msgs::InteractiveMarkerControl::NONE, position, true );
-    // position = tf::Vector3( 3, 3, 0);
-    // makeRandomDofMarker( position );
-    // position = tf::Vector3(-3, 0, 0);
-    // make6DofMarker( false, visualization_msgs::InteractiveMarkerControl::ROTATE_3D, position, false );
-    // position = tf::Vector3( 0, 0, 0);
+    position = tf::Vector3(0, 0, 0);
     make6DofMarker( false, visualization_msgs::InteractiveMarkerControl::MOVE_3D, position, false, "CENTER" );
-    position = tf::Vector3( 3, 0, 0);
+    position = tf::Vector3( 1, 1, 1);
     make6DofMarker( false, visualization_msgs::InteractiveMarkerControl::MOVE_3D, position, false, "CORNER" );
-    // position = tf::Vector3(-3,-3, 0);
-    // makeViewFacingMarker( position );
-    // position = tf::Vector3( 0,-3, 0);
-    // makeQuadrocopterMarker( position );
-    // position = tf::Vector3( 3,-3, 0);
-    // makeChessPieceMarker( position );
-    // position = tf::Vector3(-3,-6, 0);
-    // makePanTiltMarker( position );
-    // position = tf::Vector3( 0,-6, 0);
-    // makeMovingMarker( position );
-    // position = tf::Vector3( 3,-6, 0);
     makeMenuMarker( position );
-    // position = tf::Vector3( 0,-9, 0);
-    // makeButtonMarker( position );
-
+    
     server->applyChanges();
 
     nh = (boost::shared_ptr<ros::NodeHandle>) new ros::NodeHandle;
@@ -528,10 +507,10 @@ int main(int argc, char** argv)
 
 
     marker_pub = (boost::shared_ptr<ros::Publisher>) (new ros::Publisher);
-    *marker_pub = nh->advertise<visualization_msgs::MarkerArray>("/target_volume", 10);
+    *marker_pub = nh->advertise<visualization_msgs::MarkerArray>("target_volume", 10);
 
     marker_pub_boxes = (boost::shared_ptr<ros::Publisher>) (new ros::Publisher);
-    *marker_pub_boxes = nh->advertise<visualization_msgs::MarkerArray>("/boxes", 10);
+    *marker_pub_boxes = nh->advertise<visualization_msgs::MarkerArray>("boxes", 10);
 
 
 

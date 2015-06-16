@@ -127,8 +127,8 @@ include_directories(
    #${PCL_LIBRARIES} ${OCTOMAP_LIBRARIES} ${catkin_LIBRARIES}
 #)
 
-add_executable(teste src/teste.cpp)
-target_link_libraries(teste ${PCL_LIBRARIES} ${OCTOMAP_LIBRARIES} ${catkin_LIBRARIES} 
+add_executable(define_regions src/define_regions.cpp)
+target_link_libraries(define_regions ${PCL_LIBRARIES} ${OCTOMAP_LIBRARIES} ${catkin_LIBRARIES} 
 )
 
 ## Add cmake target dependencies of the executable/library
