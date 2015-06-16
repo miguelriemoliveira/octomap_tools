@@ -210,8 +210,8 @@ class PerceptionPreprocessing
                 double z = fabs(_z_min - marker.pose.position.z); 
 
                 marker.color.r = 0.0;
-                marker.color.g = 0.7;
-                marker.color.b = 0.0;
+                marker.color.g = 0.0;
+                marker.color.b = 0.7;
                 marker.color.a = 1.0;
 
                 p.x =  x; p.y =  y; p.z =  z; marker.points.push_back(p);
@@ -519,9 +519,9 @@ class PerceptionPreprocessing
             Marker marker;
 
             marker.type = Marker::SPHERE;
-            marker.scale.x = int_marker.scale * 0.45;
-            marker.scale.y = int_marker.scale * 0.45;
-            marker.scale.z = int_marker.scale * 0.45;
+            marker.scale.x = int_marker.scale * 0.65;
+            marker.scale.y = int_marker.scale * 0.65;
+            marker.scale.z = int_marker.scale * 0.65;
             marker.color.r = 0.5;
             marker.color.g = 0.5;
             marker.color.b = 0.5;

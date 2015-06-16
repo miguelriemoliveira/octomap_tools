@@ -43,7 +43,7 @@ int main (int argc, char** argv)
     pcl::toROSMsg (*cloud, msg);
     msg.header.frame_id = ros::names::remap("/map");
 
-    string output="/output"; 
+    string output="/camera/depth_registered/points"; 
     if (ros::param::get("~output", output))
     {
         ROS_INFO("Publishing point cloud on topic %s", output.c_str());

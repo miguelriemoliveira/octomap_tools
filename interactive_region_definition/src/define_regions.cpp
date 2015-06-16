@@ -30,6 +30,42 @@ boost::shared_ptr<ros::Publisher> marker_pub_boxes;
 ClassBoundingBox target_volume(0, 2, 0, 2, 0, 2);
 std::vector<ClassBoundingBox> boxes;
 
+void load_regions(void)
+{
+    std::vector<double> center_x;
+    std::vector<double> center_y;
+    std::vector<double> center_z;
+    std::vector<double> size_x;
+    std::vector<double> size_y;
+    std::vector<double> size_z;
+    std::vector<bool> is_occupied;
+    std::string frame_id = "map";
+
+    ros::param::get("~center_x", center_x);
+    ros::param::get("~center_y", center_y);
+    ros::param::get("~center_z", center_z);
+    ros::param::get("~size_x", size_x);
+    ros::param::get("~size_y", size_y);
+    ros::param::get("~size_z", size_z);
+    ros::param::get("~is_occupied", is_occupied);
+    ros::param::get("~frame_id", frame_id);
+
+    ROS_ERROR("There are %ld loaded boxes", center_x.size());
+
+    boxes.erase(boxes.begin(), boxes.end());
+    ROS_ERROR("There are %ld boxes in memory", boxes.size());
+    for (size_t i=0; i< center_x.size(); ++i)
+    {
+        ClassBoundingBox b(center_x[i] - size_x[i]/2, center_x[i] + size_x[i]/2, center_y[i] - size_y[i]/2, center_y[i] + size_y[i]/2, center_z[i] - size_z[i]/2, center_z[i] + size_z[i]/2);
+        b.occupied = is_occupied[i];
+        boxes.push_back(b);
+    }
+
+    ROS_ERROR("Now there are %ld boxes in memory", boxes.size());
+
+
+}
+
 
 Marker makeBox( InteractiveMarker &msg )
 {
@@ -139,7 +175,7 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
                     center_x.push_back(p.x());
                     center_y.push_back(p.y());
                     center_z.push_back(p.z());
-                
+
                     size_x.push_back(boxes[i].getSizeX());
                     size_y.push_back(boxes[i].getSizeY());
                     size_z.push_back(boxes[i].getSizeZ());
@@ -476,10 +512,14 @@ int main(int argc, char** argv)
     ros::NodeHandle n;
 
     std::string path = ros::package::getPath("interactive_region_definition");
-    
+
     server.reset( new interactive_markers::InteractiveMarkerServer("interactive_region_definition","",false) );
 
+    load_regions();
+
     ros::Duration(0.1).sleep();
+
+
 
     //menu_handler.insert( "Define as BBox", &processFeedback );
     //menu_handler.insert( "Define as BBox", &processFeedback );
@@ -492,13 +532,15 @@ int main(int argc, char** argv)
     menu_handler.insert( sub_menu_handle1, "Load from file", &processFeedback );
     menu_handler.insert( sub_menu_handle1, "Delete all", &processFeedback );
 
+
+
     tf::Vector3 position;
     position = tf::Vector3(0, 0, 0);
     make6DofMarker( false, visualization_msgs::InteractiveMarkerControl::MOVE_ROTATE_3D, position, true, "CENTER" );
     position = tf::Vector3( -1, -1, -1);
     make6DofMarker( false, visualization_msgs::InteractiveMarkerControl::MOVE_ROTATE_3D, position, true, "CORNER" );
     makeMenuMarker( position );
-    
+
     server->applyChanges();
 
     nh = (boost::shared_ptr<ros::NodeHandle>) new ros::NodeHandle;

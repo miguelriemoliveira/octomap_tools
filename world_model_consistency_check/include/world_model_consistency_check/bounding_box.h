@@ -103,8 +103,12 @@ class ClassBoundingBox
 
             visualization_msgs::Marker m = createMarker(ns, frame_id, color, id);
             m.type = visualization_msgs::Marker::CUBE;
-            double size = _max_x - _min_x;
-            m.scale.x = m.scale.y = m.scale.z = size;
+            //double size = _max_x - _min_x;
+            //m.scale.x = m.scale.y = m.scale.z = size;
+            //NOTE Check if it works
+            m.scale.x = _max_x - _min_x; 
+            m.scale.y = _max_y - _min_y;
+            m.scale.z = _max_z - _min_z;
             m.pose.position.x = (_max_x + _min_x)/2;
             m.pose.position.y = (_max_y + _min_y)/2;
             m.pose.position.z = (_max_z + _min_z)/2;
