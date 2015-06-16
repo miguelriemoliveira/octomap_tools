@@ -6,7 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /TF1/Frames1
-        - /PointCloud21
+        - /PointCloud21/Status1
       Splitter Ratio: 0.427015
     Tree Height: 776
   - Class: rviz/Selection
@@ -27,7 +27,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: PointCloud2
 Visualization Manager:
   Class: ""
   Displays:
@@ -234,7 +234,7 @@ Visualization Manager:
       Marker Topic: /target_volume
       Name: RegionDefinitionMarkerArray
       Namespaces:
-        target_volume: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -268,22 +268,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 10.3421
+      Distance: 3.28118
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.418907
-        Y: 1.65485
-        Z: 1.74278
+        X: -0.35726
+        Y: 0.321724
+        Z: 3.16294
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.750203
+      Pitch: 0.455203
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.89818
+      Yaw: 4.56318
     Saved:
       - Class: rviz/Orbit
         Distance: 0.98113
