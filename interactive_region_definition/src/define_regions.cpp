@@ -280,9 +280,9 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
 
 
 
-                pose.position.x = pose.position.x + target_volume.getSizeX()/2;
-                pose.position.y = pose.position.y + target_volume.getSizeY()/2;
-                pose.position.z = pose.position.z + target_volume.getSizeZ()/2;
+                pose.position.x = pose.position.x - target_volume.getSizeX()/2;
+                pose.position.y = pose.position.y - target_volume.getSizeY()/2;
+                pose.position.z = pose.position.z - target_volume.getSizeZ()/2;
                 server->setPose( "CORNER", pose );
                 server->setPose( "MENU", pose );
             }
@@ -295,9 +295,9 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
                 target_volume.setSize(dx,dy,dz);
 
                 point3d p = target_volume.getCenter();
-                p.x() = p.x() + target_volume.getSizeX()/2;
-                p.y() = p.y() + target_volume.getSizeY()/2;
-                p.z() = p.z() + target_volume.getSizeZ()/2;
+                p.x() = p.x() - target_volume.getSizeX()/2;
+                p.y() = p.y() - target_volume.getSizeY()/2;
+                p.z() = p.z() - target_volume.getSizeZ()/2;
 
                 pose.position.x = p.x();
                 pose.position.y = p.y();
@@ -371,7 +371,7 @@ void make6DofMarker( bool fixed, unsigned int interaction_mode, const tf::Vector
     InteractiveMarker int_marker;
     int_marker.header.frame_id = "map";
     tf::pointTFToMsg(position, int_marker.pose.position);
-    int_marker.scale = 1;
+    int_marker.scale = 0.5;
 
     int_marker.name = name;
     int_marker.description = "";
@@ -405,9 +405,9 @@ void make6DofMarker( bool fixed, unsigned int interaction_mode, const tf::Vector
         control.orientation.x = 1;
         control.orientation.y = 0;
         control.orientation.z = 0;
-        control.name = "rotate_x";
-        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-        int_marker.controls.push_back(control);
+        //control.name = "rotate_x";
+        //control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+        //int_marker.controls.push_back(control);
         control.name = "move_x";
         control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
         int_marker.controls.push_back(control);
@@ -416,9 +416,9 @@ void make6DofMarker( bool fixed, unsigned int interaction_mode, const tf::Vector
         control.orientation.x = 0;
         control.orientation.y = 1;
         control.orientation.z = 0;
-        control.name = "rotate_z";
-        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-        int_marker.controls.push_back(control);
+        //control.name = "rotate_z";
+        //control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+        //int_marker.controls.push_back(control);
         control.name = "move_z";
         control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
         int_marker.controls.push_back(control);
@@ -427,9 +427,9 @@ void make6DofMarker( bool fixed, unsigned int interaction_mode, const tf::Vector
         control.orientation.x = 0;
         control.orientation.y = 0;
         control.orientation.z = 1;
-        control.name = "rotate_y";
-        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-        int_marker.controls.push_back(control);
+        //control.name = "rotate_y";
+        //control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+        //int_marker.controls.push_back(control);
         control.name = "move_y";
         control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
         int_marker.controls.push_back(control);
@@ -457,9 +457,9 @@ void makeMenuMarker( const tf::Vector3& position )
     control.name = "menu_only_control";
 
     Marker marker = makeBox( int_marker );
-    marker.scale.x /= 2;
-    marker.scale.y /= 2;
-    marker.scale.z /= 2;
+    marker.scale.x /= 10;
+    marker.scale.y /= 10;
+    marker.scale.z /= 10;
 
     control.markers.push_back( marker );
     control.always_visible = true;
@@ -494,9 +494,9 @@ int main(int argc, char** argv)
 
     tf::Vector3 position;
     position = tf::Vector3(0, 0, 0);
-    make6DofMarker( false, visualization_msgs::InteractiveMarkerControl::MOVE_3D, position, false, "CENTER" );
-    position = tf::Vector3( 1, 1, 1);
-    make6DofMarker( false, visualization_msgs::InteractiveMarkerControl::MOVE_3D, position, false, "CORNER" );
+    make6DofMarker( false, visualization_msgs::InteractiveMarkerControl::MOVE_ROTATE_3D, position, true, "CENTER" );
+    position = tf::Vector3( -1, -1, -1);
+    make6DofMarker( false, visualization_msgs::InteractiveMarkerControl::MOVE_ROTATE_3D, position, true, "CORNER" );
     makeMenuMarker( position );
     
     server->applyChanges();
