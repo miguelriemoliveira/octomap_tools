@@ -97,9 +97,9 @@ void drawingCallback(const ros::TimerEvent&)
 {
     visualization_msgs::MarkerArray ma;
     std_msgs::ColorRGBA color;
-    color.r = .0; color.g = 1.0; color.b = 1; color.a = 1;
+    color.r = .6; color.g = 0.0; color.b = 0; color.a = 1;
     std_msgs::ColorRGBA color_free;
-    color_free.r = 1.0; color_free.g = 1.0; color_free.b = 0; color_free.a = 1;
+    color_free.r = 0.0; color_free.g = 0.6; color_free.b = 0; color_free.a = 1;
 
     size_t id = 0;
 
@@ -305,7 +305,7 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
                 //server->setPose( "3DOF_MOVE_3D", pose );
 
 
-                color.r = .0; color.g = 1.0; color.b = 0; color.a = 1;
+                color.r = 1.0; color.g = 1.0; color.b = 0.0; color.a = 1;
 
                 target_volume.setBoundingBox(pose.position.x - target_volume.getSizeX()/2, pose.position.x + target_volume.getSizeX()/2, pose.position.y - target_volume.getSizeY()/2, pose.position.y + target_volume.getSizeY()/2, pose.position.z - target_volume.getSizeZ()/2, pose.position.z + target_volume.getSizeZ()/2);
 
@@ -342,7 +342,7 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
                 server->setPose( "MENU", pose );
 
 
-                color.r = .0; color.g = 1.0; color.b = 0; color.a = 1;
+                color.r = 1.; color.g = 1; color.b = 0; color.a = 1;
                 ma.markers.push_back(target_volume.getMarkerWithEdges("target_volume", "/map" , color, ++id));
                 ma.markers.at(ma.markers.size()-1).lifetime = ros::Duration(0);
                 marker_pub->publish(ma);
@@ -535,9 +535,12 @@ int main(int argc, char** argv)
 
 
     tf::Vector3 position;
-    position = tf::Vector3(0, 0, 0);
+    position = tf::Vector3(-0.600168, 2.0095, 1.9937);
     make6DofMarker( false, visualization_msgs::InteractiveMarkerControl::MOVE_ROTATE_3D, position, true, "CENTER" );
-    position = tf::Vector3( -1, -1, -1);
+
+//-0.600168, 2.0095, 1.9937
+//-1.06884, 1.08446, 1.7828
+    position = tf::Vector3( -1.6, 1, .2);
     make6DofMarker( false, visualization_msgs::InteractiveMarkerControl::MOVE_ROTATE_3D, position, true, "CORNER" );
     makeMenuMarker( position );
 

@@ -154,10 +154,10 @@ void load_regions(void)
     ros::param::get("/interactive_region_definition/is_occupied", is_occupied);
     ros::param::get("/interactive_region_definition/frame_id", frame_id);
 
-    ROS_ERROR("There are %ld loaded boxes", center_x.size());
+    ROS_INFO("There are %ld loaded boxes", center_x.size());
 
     boxes.erase(boxes.begin(), boxes.end());
-    ROS_ERROR("There are %ld boxes in memory", boxes.size());
+    ROS_INFO("There are %ld boxes in memory", boxes.size());
     for (size_t i=0; i< center_x.size(); ++i)
     {
         ClassBoundingBox b(center_x[i] - size_x[i]/2, center_x[i] + size_x[i]/2, center_y[i] - size_y[i]/2, center_y[i] + size_y[i]/2, center_z[i] - size_z[i]/2, center_z[i] + size_z[i]/2);
@@ -165,7 +165,7 @@ void load_regions(void)
         boxes.push_back(b);
     }
 
-    ROS_ERROR("Now there are %ld boxes in memory", boxes.size());
+    ROS_INFO("Now there are %ld boxes in memory", boxes.size());
 
 
 }
@@ -243,9 +243,9 @@ void compareCallbackUsingRegions(const ros::TimerEvent&)
     color_occupied.r = 0; color_occupied.g = 0; color_occupied.b = 0.5; color_occupied.a = .8;
 
     std_msgs::ColorRGBA color_inconsistent;
-    color_inconsistent.r = .5; color_inconsistent.g = 0; color_inconsistent.b = 0; color_inconsistent.a = .8;
+    color_inconsistent.r = .5; color_inconsistent.g = 0; color_inconsistent.b = 0; color_inconsistent.a = .4;
     std_msgs::ColorRGBA color_inconsistent_missing;
-    color_inconsistent_missing.r = .0; color_inconsistent_missing.g = 0.5; color_inconsistent_missing.b = 0; color_inconsistent_missing.a = .8;
+    color_inconsistent_missing.r = .0; color_inconsistent_missing.g = 0.5; color_inconsistent_missing.b = 0; color_inconsistent_missing.a = .4;
 
 
     std_msgs::ColorRGBA color_target_volume;
@@ -387,7 +387,8 @@ void compareCallbackUsingRegions(const ros::TimerEvent&)
 
                 if (are_neighbors(vi[idx_b1], vi[idx_b2]))
                 {
-                    //ROS_INFO("Found neighbor idx %ld", idx_b2);
+                    ROS_INFO("Found neighbor idx %ld", idx_b2);
+                    //std::cout << 
                     flood.push_back(idx_b2);
                     queue.erase(queue.begin() + j);
                     //TODO should be b2 or b1?
