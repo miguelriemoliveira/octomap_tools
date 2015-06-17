@@ -50,6 +50,40 @@ using namespace sensor_msgs;
 
 bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2)
 {
+    // double cx1 = b1.getCenter().x();
+    // double cy1 = b1.getCenter().y();
+    // double cz1 = b1.getCenter().z();
+
+    // double cx2 = b2.getCenter().x();
+    // double cy2 = b2.getCenter().y();
+    // double cz2 = b2.getCenter().z();
+
+    // double dist = sqrt((cx1-cx2)*(cx1-cx2) + (cy1-cy2)*(cy1-cy2) + (cz1-cz2)*(cz1-cz2));
+
+    // double mx1 =  b1.getMinimumPoint().x();
+    // double my1 =  b1.getMinimumPoint().y();
+    // double mz1 =  b1.getMinimumPoint().z();
+    // double s1 = sqrt( (cx1 - mx1) * (cx1 - mx1) + (cy1 - my1) * (cy1 - my1) + (cz1 - mz1) * (cz1 - mz1));
+
+    // double mx2 =  b2.getMinimumPoint().x();
+    // double my2 =  b2.getMinimumPoint().y();
+    // double mz2 =  b2.getMinimumPoint().z();
+    // double s2 = sqrt( (cx2 - mx2) * (cx2 - mx2) + (cy2 - my2) * (cy2 - my2) + (cz2 - mz2) * (cz2 - mz2));
+
+
+
+    // //ROS_INFO("dx=%f dy=%f dz=%f", dx,dy,dz);
+    // //ROS_INFO("dist=%f", dist);
+    // //ROS_INFO("size_sum=%f", size_sum);
+    // //if (dist <= size_sum*50000000000)
+    // if (dist <= (s1 + s2))
+    //     return true;
+    // else
+    //     return false;
+
+
+
+
     double cx1 = b1.getCenter().x();
     double cy1 = b1.getCenter().y();
     double cz1 = b1.getCenter().z();
@@ -58,28 +92,28 @@ bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2)
     double cy2 = b2.getCenter().y();
     double cz2 = b2.getCenter().z();
 
-    double dist = sqrt((cx1-cx2)*(cx1-cx2) + (cy1-cy2)*(cy1-cy2) + (cz1-cz2)*(cz1-cz2));
-
     double mx1 =  b1.getMinimumPoint().x();
     double my1 =  b1.getMinimumPoint().y();
     double mz1 =  b1.getMinimumPoint().z();
-    double s1 = sqrt( (cx1 - mx1) * (cx1 - mx1) + (cy1 - my1) * (cy1 - my1) + (cz1 - mz1) * (cz1 - mz1));
 
     double mx2 =  b2.getMinimumPoint().x();
     double my2 =  b2.getMinimumPoint().y();
     double mz2 =  b2.getMinimumPoint().z();
-    double s2 = sqrt( (cx2 - mx2) * (cx2 - mx2) + (cy2 - my2) * (cy2 - my2) + (cz2 - mz2) * (cz2 - mz2));
+    
 
+    double dist_cx = sqrt((cx1-cx2)*(cx1-cx2));
+    double dist_cy = sqrt((cy1-cy2)*(cy1-cy2));
+    double dist_cz = sqrt((cz1-cz2)*(cx1-cz2));
 
+    double dist_mx = abs(cx1 - mx1) + abs(cx2 - mx2);
+    double dist_my = abs(cy1 - my1) + abs(cy2 - my2);
+    double dist_mz = abs(cz1 - mz1) + abs(cz2 - mz2);
 
-    //ROS_INFO("dx=%f dy=%f dz=%f", dx,dy,dz);
-    //ROS_INFO("dist=%f", dist);
-    //ROS_INFO("size_sum=%f", size_sum);
-    //if (dist <= size_sum*50000000000)
-    if (dist <= (s1 + s2))
+    if (dist_cx == dist_mx && dist_cz == dist_my && dist_cz == dist_mz)
         return true;
     else
         return false;
+
 }
 
 
