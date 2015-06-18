@@ -60,8 +60,11 @@ cv::Scalar class_colormap::cv_color(int i)
 
 class_colormap::class_colormap(std::string name, int total, float alfa, bool reverse)
 {
-    if (total ==0) total = 10;
+    if (total ==0) 
+    {
+        total = 10;
 		ROS_WARN("Total number of colors is 0. Using default 10");
+    }
 
 	if(name=="jet")
 		init_colormap_jet(total, alfa, reverse);	

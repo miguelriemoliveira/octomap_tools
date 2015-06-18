@@ -34,18 +34,143 @@ using namespace octomap_msgs;
 using namespace sensor_msgs;
 
 
+/* _________________________________
+  |                                 |
+  |       FUNCTION PROTOTYPES       |
+  |_________________________________| */
+bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2);
 
 
-// bool operator==(const ClassBoundingBox& lhs, const ClassBoundingBox& rhs) const
-//         { 
-//             if ( rhs.getMinimumPoint() == lhs.getMinimumPoint() )
-//             {
-//                 return true; 
-//             }
 
-//             return false;
+/* _________________________________
+  |                                 |
+  |      FUNCTION DEFINITIONS       |
+  |_________________________________| */
 
-//         }
+void clustersToMarkerArray(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluster, visualization_msgs::MarkerArray& ma, size_t& id, string frame_id, string ns, class_colormap& cluster_colors)
+{
+
+    // Iterates once per cluster
+    for (size_t k = 0; k < cluster.size(); ++k)
+    {
+        // Iterates once per point of the cluster
+        for (size_t l = 0; l < cluster[k].size(); ++l)
+        {
+            size_t cluster_aux = cluster[k][l];
+            ma.markers.push_back(vi[cluster_aux].getMarkerCubeVolume(ns, frame_id, cluster_colors.color(k), ++id));
+        }
+    }
+
+}
+
+void filterClustersByVolume(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluster, vector< vector<size_t> >& selected_cluster, double volume_threshold)
+{
+
+    for (size_t k = 0; k < cluster.size(); ++k)
+    {
+        //Assume all cells have the same volume
+        double cell_volume = vi[cluster[k][0]].getVolume();
+        double cluster_volume = cell_volume * cluster[k].size();
+
+        if (cluster_volume > volume_threshold)
+        {
+            vector<size_t> tmp;
+            // Iterates once per point of the cluster
+            for (size_t l = 0; l < cluster[k].size(); ++l)
+            {
+                size_t cluster_aux = cluster[k][l];
+                tmp.push_back(cluster[k][l]);
+            }
+            selected_cluster.push_back(tmp);
+        }
+    }
+}
+
+
+void clusterBoundingBoxes(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluster)
+{
+
+    //Build the queue
+    vector<size_t> queue;
+    for (size_t i=0; i != vi.size(); ++i)
+    {
+        queue.push_back(i);
+    }
+
+    // //Print the queue list
+    // for (size_t i=0; i != queue.size(); ++i)
+    // {
+    //     ROS_INFO("queue[%ld]=%ld", i, queue[i]);
+    // }
+
+    while (queue.size() != 0)
+    {
+        //Select new seed
+        size_t seed = queue[0]; 
+        queue.erase(queue.begin() + 0); //remove first element
+
+        // ROS_INFO("Selected seed point %ld, queue has size=%ld", seed, queue.size());
+
+        //Create new cluster
+        vector<size_t> tmp;
+        cluster.push_back(tmp);
+
+        //ROS_INFO("Created cluster %ld ", cluster.size());
+
+        //Expand seed
+        vector <size_t> flood;
+        flood.push_back(seed);
+
+
+        while (flood.size() != 0)
+        {
+
+            //ROS_INFO("Expanding first elem of flood (size %ld) idx = %ld", flood.size(), flood[0]);
+            //expand flood[j]
+            size_t idx_b1 = flood[0];
+
+
+            //ROS_INFO("Checking of queue size %ld", queue.size());
+            for (size_t j=0; j < queue.size(); ++j) 
+            {
+                size_t idx_b2 = queue[j]; 
+
+                //ROS_INFO("Checking idx_b1 %ld idx_b2 %ld", idx_b1, idx_b2);
+
+
+                //char name[50];
+                //cout << "press a key to continue";
+                //cin >> name;
+
+                if (are_neighbors(vi[idx_b1], vi[idx_b2]))
+                {
+                    //ROS_INFO("Found neighbor idx %ld", idx_b2);
+                    //std::cout << 
+                    flood.push_back(idx_b2);
+                    queue.erase(queue.begin() + j);
+                    //TODO should be b2 or b1?
+
+                }
+                else
+                {
+                    //nothing to do 
+                }
+            }
+
+
+
+            //add first elem of floodto cluster
+            cluster.at(cluster.size()-1).push_back(flood[0]); //add seed point to cluster
+
+            //remove first elem of  flood
+            flood.erase(flood.begin() + 0);
+
+        }
+
+
+        //ROS_INFO("Created cluster %ld with %ld points", cluster.size(), cluster[cluster.size()-1].size());
+    }
+}
 
 
 bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2)
@@ -270,7 +395,6 @@ void compareCallbackUsingRegions(const ros::TimerEvent&)
     unsigned int id=0;
     unsigned int id_inconsistencies=0;
     unsigned int id_noneighbors=0;
-    unsigned int id_clusters=0;
 
     // Color initialization
     std_msgs::ColorRGBA color_occupied;
@@ -360,359 +484,31 @@ void compareCallbackUsingRegions(const ros::TimerEvent&)
     }
 
 
-    /* _________________________________
-       |                                 |
-       |     for the exceeding clusters  |
-       |_________________________________| */
 
-    //Build the queue
-    vector<size_t> queue;
-    for (size_t i=0; i != vi.size(); ++i)
-    {
-        queue.push_back(i);
-    }
-
-    // //Print the queue list
-    // for (size_t i=0; i != queue.size(); ++i)
-    // {
-    //     ROS_INFO("queue[%ld]=%ld", i, queue[i]);
-    // }
-
+    //Cluster the exceeding bounding boxes
     vector< vector<size_t> > cluster; 
-
-    while (queue.size() != 0)
-    {
-        //Select new seed
-        size_t seed = queue[0]; 
-        queue.erase(queue.begin() + 0); //remove first element
-
-        // ROS_INFO("Selected seed point %ld, queue has size=%ld", seed, queue.size());
-
-        //Create new cluster
-        vector<size_t> tmp;
-        cluster.push_back(tmp);
-
-        ROS_INFO("Created cluster %ld ", cluster.size());
-
-        //Expand seed
-        vector <size_t> flood;
-        flood.push_back(seed);
-
-
-        while (flood.size() != 0)
-        {
-
-            //ROS_INFO("Expanding first elem of flood (size %ld) idx = %ld", flood.size(), flood[0]);
-            //expand flood[j]
-            size_t idx_b1 = flood[0];
-
-
-            //ROS_INFO("Checking of queue size %ld", queue.size());
-            for (size_t j=0; j < queue.size(); ++j) 
-            {
-                size_t idx_b2 = queue[j]; 
-
-                //ROS_INFO("Checking idx_b1 %ld idx_b2 %ld", idx_b1, idx_b2);
-
-
-                //char name[50];
-                //cout << "press a key to continue";
-                //cin >> name;
-
-                if (are_neighbors(vi[idx_b1], vi[idx_b2]))
-                {
-                    ROS_INFO("Found neighbor idx %ld", idx_b2);
-                    //std::cout << 
-                    flood.push_back(idx_b2);
-                    queue.erase(queue.begin() + j);
-                    //TODO should be b2 or b1?
-
-                }
-                else
-                {
-                    //nothing to do 
-                }
-            }
-
-
-
-            //add first elem of floodto cluster
-            cluster.at(cluster.size()-1).push_back(flood[0]); //add seed point to cluster
-
-            //remove first elem of  flood
-            flood.erase(flood.begin() + 0);
-
-        }
-
-
-        ROS_INFO("Created cluster %ld with %ld points", cluster.size(), cluster[cluster.size()-1].size());
-
-
-
-    }
-
-
-    /* _________________________________
-       |                                 |
-       |     for the missing clusters    |
-       |_________________________________| */
-
-    //Build the queue
-    vector<size_t> queue_missing;
-    for (size_t i=0; i != vi_missing.size(); ++i)
-    {
-        queue_missing.push_back(i);
-    }
-
-    vector< vector<size_t> > cluster_missing; 
-
-    while (queue_missing.size() != 0)
-    {
-        //Select new seed
-        size_t seed = queue_missing[0]; 
-        queue_missing.erase(queue_missing.begin() + 0); //remove first element
-
-        // ROS_INFO("Selected seed point %ld, queue has size=%ld", seed, queue.size());
-
-        //Create new cluster
-        vector<size_t> tmp;
-        cluster_missing.push_back(tmp);
-
-        ROS_INFO("Created cluster_missing %ld ", cluster_missing.size());
-
-        //Expand seed
-        vector <size_t> flood;
-        flood.push_back(seed);
-
-
-        while (flood.size() != 0)
-        {
-
-            //ROS_INFO("Expanding first elem of flood (size %ld) idx = %ld", flood.size(), flood[0]);
-            //expand flood[j]
-            size_t idx_b1 = flood[0];
-
-
-            //ROS_INFO("Checking of queue size %ld", queue.size());
-            for (size_t j=0; j < queue_missing.size(); ++j) 
-            {
-                size_t idx_b2 = queue_missing[j]; 
-
-                //ROS_INFO("Checking idx_b1 %ld idx_b2 %ld", idx_b1, idx_b2);
-
-
-                //char name[50];
-                //cout << "press a key to continue";
-                //cin >> name;
-
-                if (are_neighbors(vi_missing[idx_b1], vi_missing[idx_b2]))
-                {
-                    //ROS_INFO("Found neighbor idx %ld", idx_b2);
-                    flood.push_back(idx_b2);
-                    queue_missing.erase(queue_missing.begin() + j);
-                    //TODO should be b2 or b1?
-
-                }
-                else
-                {
-                    //nothing to do 
-                }
-            }
-
-
-
-            //add first elem of floodto cluster
-            cluster_missing.at(cluster_missing.size()-1).push_back(flood[0]); //add seed point to cluster
-
-            //remove first elem of  flood
-            flood.erase(flood.begin() + 0);
-
-        }
-
-
-        ROS_INFO("Created cluster_missing %ld with %ld points", cluster_missing.size(), cluster_missing[cluster_missing.size()-1].size());
-
-
-
-    }
-
-    //Information about clusters
-
+    clusterBoundingBoxes(vi, cluster);
     ROS_INFO("There are %ld clusters", cluster.size());
     class_colormap cluster_colors("autumn", cluster.size(), 0.8);
 
+    vector< vector<size_t> > cluster_missing; 
+    clusterBoundingBoxes(vi_missing, cluster_missing);
     ROS_INFO("There are %ld clusters_missing", cluster_missing.size());
-    class_colormap cluster_missing_colors("winter", cluster_missing.size(), 0.8, true);
+    class_colormap cluster_missing_colors("summer", cluster_missing.size(), 0.8);
 
-    // ROS_INFO("Number of clusters found %ld", cluster.size());
-    // for (size_t i=0; i < cluster.size(); ++i)
-    // {
-    //     ROS_INFO("Cluster %ld has the following points:", i);
-
-    //     for (size_t j=0; j < cluster[i].size(); ++j)
-    //     {
-    //         cout << cluster[i][j] << ", "; 
-
-    //     }
-
-    //     cout << endl; 
-    // }
-
-
-    // ----------------------------------------------------
-    // --------- Euclidean Cluster Extraction (RAFAEL) _---
-    // ----------------------------------------------------
-
-
-    // Create empty list of clusters
-    // std::vector<std::vector<ClassBoundingBox *>> v_v_cluster;
-    //std::vector< std::vector<ClassBoundingBox> > v_v_cluster; 
-
-    //// Create queue of cells that need to be checked
-    //std::vector<ClassBoundingBox> v_toCheck;
-
-
-    //// For every cell in the dataset that is not part of a cluster already, 
-    //// add the cell to the queue of cells that need to be checked.
-
-    //// Initializes the Iterator to the dataset
-    //for (std::vector<ClassBoundingBox>::iterator i = vi.begin(); i != vi.end(); i++)
-    //{
-    //// Tests if the cell is already part of a cluster.
-    //if (true)
-    //{
-    //// If it is, jumps out of the cycle, because the cell is already in a cluster.
-    //}
-
-    //else
-    //{
-    //// Adds the cell to the vector of cells that need to be checked.
-    //v_toCheck.push_back((*i));
-
-    //// For every cell in the queue of cells that need to be checked:
-    //for (std::vector<ClassBoundingBox>::iterator iq = v_toCheck.begin(); iq != v_toCheck.end(); iq++)
-    //{
-    //// Serch for cells in the Neighbourhood
-    //// If there are cells in the Neighbourhood,
-    //// Test if the are already not part of the queue of points that needs to be checked.
-
-    //// if( std::find(v_toCheck.begin(), v_toCheck.end(), (*iq) ) != v_toCheck.end() ) 
-    //// {
-    ////     // v contains x 
-    //// } 
-
-    //// else 
-    //// {
-    ////     // v does not contain x
-    //// }
-
-
-    //// If they are not,  add then to the list of points that needs to be checked.
-
-    //}
-
-    //// When every point of the "to check" dataset is checked, add then to the cluster list and clean it.
-    //// Draw the data cells to be visualized
-
-    //}
-    //}
-
-
-
-
-
-    ROS_INFO("Inconsistencies vector has %ld cells", vi.size());
-
-
-    /* ______________________________________
-       |                                      |
-       |    Exceeding Clusters                |
-       |________________________________      | */
-    //Filter clusters using volume threshold |
-
+    //Select only clusters above a given volume threshold
     vector< vector<size_t> > selected_cluster; 
+    filterClustersByVolume(vi, cluster, selected_cluster, volume_threshold);
+    ROS_INFO("Selected %ld clusters using volume threshold", selected_cluster.size());
 
-    for (size_t k = 0; k < cluster.size(); ++k)
-    {
-        //Assume all cells have the same volume
-        double cell_volume = vi[cluster[k][0]].getVolume();
-        double cluster_volume = cell_volume * cluster[k].size();
-
-        if (cluster_volume > volume_threshold)
-        {
-            vector<size_t> tmp;
-            // Iterates once per point of the cluster
-            for (size_t l = 0; l < cluster[k].size(); ++l)
-            {
-                size_t cluster_aux = cluster[k][l];
-                tmp.push_back(cluster[k][l]);
-            }
-            selected_cluster.push_back(tmp);
-        }
-    }
-    ROS_INFO("Selected %ld clusters suing volume threshold", selected_cluster.size());
-
-
-
-    // ----------------------------------------------------
-    // --------- Draws clusters on visualizer -------------
-
-    // Iterates once per cluster
-    for (size_t k = 0; k < selected_cluster.size(); ++k)
-    {
-        // Iterates once per point of the cluster
-        for (size_t l = 0; l < selected_cluster[k].size(); ++l)
-        {
-            size_t cluster_aux = selected_cluster[k][l];
-            ma_clusters.markers.push_back(vi[cluster_aux].getMarkerCubeVolume("clusters", octree_frame_id, cluster_colors.color(k), ++id_clusters));
-        }
-    }
-
-
-    /* ______________________________________
-       | 
-       |    Missing Clusters                  |
-       |________________________________      | */
-    //Filter clusters using volume threshold |
     vector< vector<size_t> > selected_cluster_missing; 
-
-    for (size_t k = 0; k < cluster_missing.size(); ++k)
-    {
-        //Assume all cells have the same volume
-        double cell_volume = vi_missing[cluster_missing[k][0]].getVolume();
-        double cluster_volume = cell_volume * cluster_missing[k].size();
-
-        if (cluster_volume > volume_threshold)
-        {
-            vector<size_t> tmp;
-            // Iterates once per point of the cluster
-            for (size_t l = 0; l < cluster_missing[k].size(); ++l)
-            {
-                size_t cluster_aux = cluster_missing[k][l];
-                tmp.push_back(cluster_missing[k][l]);
-            }
-            selected_cluster_missing.push_back(tmp);
-        }
-    }
+    filterClustersByVolume(vi_missing, cluster_missing, selected_cluster_missing, volume_threshold);
     ROS_INFO("Selected %ld clusters_missing using volume threshold", selected_cluster_missing.size());
 
-
-
-    // ----------------------------------------------------
-    // --------- Draws clusters on visualizer -------------
-
-    // Iterates once per cluster
-    for (size_t k = 0; k < selected_cluster_missing.size(); ++k)
-    {
-        // Iterates once per point of the cluster_missing
-        for (size_t l = 0; l < selected_cluster_missing[k].size(); ++l)
-        {
-            size_t cluster_aux = selected_cluster_missing[k][l];
-            ma_clusters.markers.push_back(vi_missing[cluster_aux].getMarkerCubeVolume("clusters", octree_frame_id, cluster_missing_colors.color(k), ++id_clusters));
-        }
-    }
-
-
+    //Draw selected clusters in RVIZ
+    size_t id_clusters=0;
+    clustersToMarkerArray(vi, selected_cluster, ma_clusters, id_clusters, octree_frame_id, "clusters", cluster_colors);
+    clustersToMarkerArray(vi_missing, selected_cluster_missing, ma_clusters, id_clusters, octree_frame_id, "clusters", cluster_missing_colors);
 
 
 

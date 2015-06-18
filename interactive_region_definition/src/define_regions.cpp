@@ -50,10 +50,10 @@ void load_regions(void)
     ros::param::get("~is_occupied", is_occupied);
     ros::param::get("~frame_id", frame_id);
 
-    ROS_ERROR("There are %ld loaded boxes", center_x.size());
+    ROS_INFO("There are %ld loaded boxes", center_x.size());
 
     boxes.erase(boxes.begin(), boxes.end());
-    ROS_ERROR("There are %ld boxes in memory", boxes.size());
+    ROS_INFO("There are %ld boxes in memory", boxes.size());
     for (size_t i=0; i< center_x.size(); ++i)
     {
         ClassBoundingBox b(center_x[i] - size_x[i]/2, center_x[i] + size_x[i]/2, center_y[i] - size_y[i]/2, center_y[i] + size_y[i]/2, center_z[i] - size_z[i]/2, center_z[i] + size_z[i]/2);
@@ -61,7 +61,7 @@ void load_regions(void)
         boxes.push_back(b);
     }
 
-    ROS_ERROR("Now there are %ld boxes in memory", boxes.size());
+    ROS_INFO("Now there are %ld boxes in memory", boxes.size());
 
 
 }
