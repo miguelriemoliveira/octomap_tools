@@ -47,6 +47,132 @@ bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2);
   |      FUNCTION DEFINITIONS       |
   |_________________________________| */
 
+
+void centerOfMass(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluster, visualization_msgs::MarkerArray ma, visualization_msgs::MarkerArray ma_volumeText, size_t &id, string frame_id)
+{
+
+    double cluster_volume = 0;
+
+    for (size_t m = 0; m < cluster.size(); ++m)
+    {
+
+        double totalX = 0;
+        double totalY = 0;
+        double totalZ = 0;
+
+        double cell_volume = 0;
+
+        for (size_t n = 0; n < cluster[m].size(); ++n)
+        {
+
+            size_t cluster_aux = cluster[m][n];
+
+            // Calculate the sum of X
+            totalX += vi[cluster_aux].getCenter().x();
+
+            // Calculate the sum of Y
+            totalY += vi[cluster_aux].getCenter().y();
+
+            // Calculate the sum of Z
+            totalZ += vi[cluster_aux].getCenter().z();
+
+            // Cell Volume
+            cell_volume = vi[cluster[m][n]].getVolume();
+        }
+
+        // Calculate the average of X
+        double averageX = 0;
+        averageX = totalX / cluster[m].size();
+
+        // Calculate the average of Y
+        double averageY = 0;
+        averageY = totalY / cluster[m].size();
+
+        // Calculate the average of Z
+        double averageZ = 0;
+        averageZ = totalZ / cluster[m].size();
+
+        ROS_INFO("Averages for Cluster [%ld]: X: %f, Y: %f, Z: %f", m, averageX, averageY, averageZ);
+
+        visualization_msgs::Marker marker;
+        marker.header.frame_id = frame_id ;
+        marker.header.stamp = ros::Time();
+        marker.ns = "centerOfMass";
+        marker.id = id; //   ATENTION!!
+        marker.type = visualization_msgs::Marker::SPHERE;
+        marker.action = visualization_msgs::Marker::ADD;
+        marker.lifetime = ros::Duration(0.5);
+
+        marker.pose.position.x = averageX;
+        marker.pose.position.y = averageY;
+        marker.pose.position.z = averageZ;
+
+        marker.pose.orientation.x = 0.0;
+        marker.pose.orientation.y = 0.0;
+        marker.pose.orientation.z = 0.0;
+        marker.pose.orientation.w = 1.0;
+
+        marker.scale.x = 0.1;
+        marker.scale.y = 0.1;
+        marker.scale.z = 0.1;
+
+        marker.color.a = 0.8; // Don't forget to set the alpha!
+        marker.color.r = 0.4;
+        marker.color.g = 0.4;
+        marker.color.b = 0.4;
+
+        ma.markers.push_back(marker);
+
+        cluster_volume += cell_volume;
+
+        // Create the marker
+        visualization_msgs::Marker marker_volume;
+        marker_volume.header.frame_id = frame_id ;
+        marker_volume.header.stamp = ros::Time();
+        marker_volume.ns = "volume";
+        marker_volume.id = id; //   ATENTION!!
+        marker_volume.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+        marker_volume.action = visualization_msgs::Marker::ADD;
+
+        marker_volume.pose.position.x = averageX;
+        marker_volume.pose.position.y = averageY;
+        marker_volume.pose.position.z = averageZ;
+
+        // double to string
+        std::ostringstream os;
+        char ss[1024];
+
+        sprintf(ss, "%0.6f", cluster_volume);
+        std::string str_volume = ss;
+
+        sprintf(ss, "%0.3f", averageX);
+        std::string str_averageX = ss;
+
+        sprintf(ss, "%0.3f", averageY);
+        std::string str_averageY = ss;
+
+        sprintf(ss, "%0.3f", averageZ);
+        std::string str_averageZ = ss;
+
+        // marker_volume.text = std::string("Volume: ") + str_volume + "\n";
+        marker_volume.text = std::string("X: ") + str_averageX + std::string(" Y: ") + str_averageY + std::string(" Z: ") + str_averageZ + "\n" + std::string("Volume: ") + str_volume;
+
+        marker_volume.scale.z = 0.05; // Size of Text
+        marker_volume.color.a = 1;
+        marker_volume.color.r = 1;
+        marker_volume.color.g = 1;
+        marker_volume.color.b = 1;
+
+        marker_volume.lifetime = ros::Duration(0.5);
+
+        ma_volumeText.markers.push_back(marker_volume);
+
+        id++;
+
+    }
+}
+
+
 void clustersToMarkerArray(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluster, visualization_msgs::MarkerArray& ma, size_t& id, string frame_id, string ns, class_colormap& cluster_colors)
 {
 
@@ -510,287 +636,123 @@ void compareCallbackUsingRegions(const ros::TimerEvent&)
     clustersToMarkerArray(vi, selected_cluster, ma_clusters, id_clusters, octree_frame_id, "clusters", cluster_colors);
     clustersToMarkerArray(vi_missing, selected_cluster_missing, ma_clusters, id_clusters, octree_frame_id, "clusters", cluster_missing_colors);
 
-
-
-    /* ______________________________________
-       |                                      |
-       |    Exceeding Clusters                |
-       |________________________________      | */
-
-    // ----------------------------------------------------
-    // ----------- Center of Mass of Clusters -------------
-    // ----------------------------------------------------
-
-    // Visualization Message Marker Array for the center of mass
+    // Draw the Center of Mass Sphere and Volume Information
     visualization_msgs::MarkerArray ma_centerofmass;
-    int id_ma_centerofmass = 0;
-
-
-    for (size_t m = 0; m < selected_cluster.size(); ++m)
-    {
-
-        double totalX = 0;
-        double totalY = 0;
-        double totalZ = 0;
-
-        for (size_t n = 0; n < selected_cluster[m].size(); ++n)
-        {
-
-            size_t cluster_aux = selected_cluster[m][n];
-
-            // double total_volume += vi[cluster_aux].getVolume();
-            // double totalX += vi[cluster_aux].getCenter().x() * vi[cluster_aux].getVolume();
-
-            // Calculate the sum of X
-            totalX += vi[cluster_aux].getCenter().x();
-
-            // Calculate the sum of Y
-            totalY += vi[cluster_aux].getCenter().y();
-
-            // Calculate the sum of Z
-            totalZ += vi[cluster_aux].getCenter().z();
-        }
-
-        // Calculate the average of X
-        double averageX = 0;
-        averageX = totalX / selected_cluster[m].size();
-
-        // Calculate the average of Y
-        double averageY = 0;
-        averageY = totalY / selected_cluster[m].size();
-
-        // Calculate the average of Z
-        double averageZ = 0;
-        averageZ = totalZ / selected_cluster[m].size();
-
-        ROS_INFO("Averages for Cluster Exceeding[%ld]: X: %f, Y: %f, Z: %f", m, averageX, averageY, averageZ);
-
-        visualization_msgs::Marker marker;
-        marker.header.frame_id = octree_frame_id ;
-        marker.header.stamp = ros::Time();
-        marker.ns = "centerOfMass";
-        marker.id = id_ma_centerofmass; //   ATENTION!!
-        marker.type = visualization_msgs::Marker::SPHERE;
-        marker.action = visualization_msgs::Marker::ADD;
-        marker.lifetime = ros::Duration(0.5);
-
-        marker.pose.position.x = averageX;
-        marker.pose.position.y = averageY;
-        marker.pose.position.z = averageZ;
-
-        marker.pose.orientation.x = 0.0;
-        marker.pose.orientation.y = 0.0;
-        marker.pose.orientation.z = 0.0;
-        marker.pose.orientation.w = 1.0;
-
-        marker.scale.x = 0.1;
-        marker.scale.y = 0.1;
-        marker.scale.z = 0.1;
-
-        marker.color.a = 0.8; // Don't forget to set the alpha!
-        marker.color.r = 1.0;
-        marker.color.g = 0.0;
-        marker.color.b = 0.0;
-
-        ma_centerofmass.markers.push_back(marker);
-
-        id_ma_centerofmass++;
-
-
-
-
-    }
-
-
-    /* ______________________________________
-       |                                      |
-       |    Exceeding Clusters                |
-       |________________________________      | */
-
-    // ----------------------------------------------------
-    // ----------- Print Volume of Clusters ---------------
-    // ----------------------------------------------------
-
-    // Visualization Message Marker Array for the center of mass
     visualization_msgs::MarkerArray ma_volumeText;
-    int id_ma_volume = 0;
-
-    for (size_t m = 0; m < selected_cluster.size(); ++m)
-    {
-
-        double totalX = 0;
-        double totalY = 0;
-        double totalZ = 0;
-
-        for (size_t n = 0; n < selected_cluster[m].size(); ++n)
-        {
-
-            size_t cluster_aux = selected_cluster[m][n];
-
-            // double total_volume += vi[cluster_aux].getVolume();
-            // double totalX += vi[cluster_aux].getCenter().x() * vi[cluster_aux].getVolume();
-
-            // Calculate the sum of X
-            totalX += vi[cluster_aux].getCenter().x();
-
-            // Calculate the sum of Y
-            totalY += vi[cluster_aux].getCenter().y();
-
-            // Calculate the sum of Z
-            totalZ += vi[cluster_aux].getCenter().z();
-        }
-
-        // Calculate the average of X
-        double averageX = 0;
-        averageX = totalX / selected_cluster[m].size();
-
-        // Calculate the average of Y
-        double averageY = 0;
-        averageY = totalY / selected_cluster[m].size();
-
-        // Calculate the average of Z
-        double averageZ = 0;
-        averageZ = totalZ / selected_cluster[m].size();
-
-        // Compute the volume
-        //Assume all cells have the same volume
-        double cell_volume = vi[selected_cluster[m][0]].getVolume();
-        double cluster_volume = cell_volume * selected_cluster[m].size();
-
-        // Create the marker
-        visualization_msgs::Marker marker_volume;
-        marker_volume.header.frame_id = octree_frame_id ;
-        marker_volume.header.stamp = ros::Time();
-        marker_volume.ns = "volume";
-        marker_volume.id = id_ma_volume; //   ATENTION!!
-        marker_volume.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-        marker_volume.action = visualization_msgs::Marker::ADD;
-
-        marker_volume.pose.position.x = averageX;
-        marker_volume.pose.position.y = averageY;
-        marker_volume.pose.position.z = averageZ;
-
-        // double to string
-        std::ostringstream os;
-        char ss[1024];
-
-        sprintf(ss, "%0.6f", cluster_volume);
-        std::string str_volume = ss;
-
-        sprintf(ss, "%0.3f", averageX);
-        std::string str_averageX = ss;
-
-        sprintf(ss, "%0.3f", averageY);
-        std::string str_averageY = ss;
-
-        sprintf(ss, "%0.3f", averageZ);
-        std::string str_averageZ = ss;
-
-        // marker_volume.text = std::string("Volume: ") + str_volume + "\n";
-        marker_volume.text = std::string("X: ") + str_averageX + std::string(" Y: ") + str_averageY + std::string(" Z: ") + str_averageZ + "\n" + std::string("Volume: ") + str_volume;
-
-        marker_volume.scale.z = 0.05; // Size of Text
-        marker_volume.color.a = 1;
-        marker_volume.color.r = 1;
-        marker_volume.color.g = 1;
-        marker_volume.color.b = 1;
-
-        marker_volume.lifetime = ros::Duration(0.5);
-
-        ma_volumeText.markers.push_back(marker_volume);
-
-        id_ma_volume++;
-
-
-    }
+    size_t id_ma_centerofmass = 0;
+    centerOfMass(vi, selected_cluster, ma_centerofmass, ma_volumeText, id_ma_centerofmass, octree_frame_id);
+    centerOfMass(vi_missing, selected_cluster_missing, ma_centerofmass, ma_volumeText, id_ma_centerofmass, octree_frame_id);
 
 
 
-    /* ______________________________________
-       |                                      |
-       |    Missing Clusters                  |
-       |________________________________      | */
 
-    // ----------------------------------------------------
-    // ----------- Center of Mass of Clusters -------------
-    // ----------------------------------------------------
+    // }
+
+
+    // /* ______________________________________
+    //    |                                      |
+    //    |    Exceeding Clusters                |
+    //    |________________________________      | */
+
+    // // ----------------------------------------------------
+    // // ----------- Print Volume of Clusters ---------------
+    // // ----------------------------------------------------
 
     // // Visualization Message Marker Array for the center of mass
-    // visualization_msgs::MarkerArray ma_centerofmass;
-    // int id_ma_centerofmass = 0;
+    // visualization_msgs::MarkerArray ma_volumeText;
+    // int id_ma_volume = 0;
+
+    // for (size_t m = 0; m < selected_cluster.size(); ++m)
+    // {
+
+    //     double totalX = 0;
+    //     double totalY = 0;
+    //     double totalZ = 0;
+
+    //     for (size_t n = 0; n < selected_cluster[m].size(); ++n)
+    //     {
+
+    //         size_t cluster_aux = selected_cluster[m][n];
+
+    //         // double total_volume += vi[cluster_aux].getVolume();
+    //         // double totalX += vi[cluster_aux].getCenter().x() * vi[cluster_aux].getVolume();
+
+    //         // Calculate the sum of X
+    //         totalX += vi[cluster_aux].getCenter().x();
+
+    //         // Calculate the sum of Y
+    //         totalY += vi[cluster_aux].getCenter().y();
+
+    //         // Calculate the sum of Z
+    //         totalZ += vi[cluster_aux].getCenter().z();
+    //     }
+
+    //     // Calculate the average of X
+    //     double averageX = 0;
+    //     averageX = totalX / selected_cluster[m].size();
+
+    //     // Calculate the average of Y
+    //     double averageY = 0;
+    //     averageY = totalY / selected_cluster[m].size();
+
+    //     // Calculate the average of Z
+    //     double averageZ = 0;
+    //     averageZ = totalZ / selected_cluster[m].size();
+
+    //     // Compute the volume
+    //     //Assume all cells have the same volume
+    //     double cell_volume = vi[selected_cluster[m][0]].getVolume();
+    //     double cluster_volume = cell_volume * selected_cluster[m].size();
+
+    //     // Create the marker
+    //     visualization_msgs::Marker marker_volume;
+    //     marker_volume.header.frame_id = octree_frame_id ;
+    //     marker_volume.header.stamp = ros::Time();
+    //     marker_volume.ns = "volume";
+    //     marker_volume.id = id_ma_volume; //   ATENTION!!
+    //     marker_volume.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+    //     marker_volume.action = visualization_msgs::Marker::ADD;
+
+    //     marker_volume.pose.position.x = averageX;
+    //     marker_volume.pose.position.y = averageY;
+    //     marker_volume.pose.position.z = averageZ;
+
+    //     // double to string
+    //     std::ostringstream os;
+    //     char ss[1024];
+
+    //     sprintf(ss, "%0.6f", cluster_volume);
+    //     std::string str_volume = ss;
+
+    //     sprintf(ss, "%0.3f", averageX);
+    //     std::string str_averageX = ss;
+
+    //     sprintf(ss, "%0.3f", averageY);
+    //     std::string str_averageY = ss;
+
+    //     sprintf(ss, "%0.3f", averageZ);
+    //     std::string str_averageZ = ss;
+
+    //     // marker_volume.text = std::string("Volume: ") + str_volume + "\n";
+    //     marker_volume.text = std::string("X: ") + str_averageX + std::string(" Y: ") + str_averageY + std::string(" Z: ") + str_averageZ + "\n" + std::string("Volume: ") + str_volume;
+
+    //     marker_volume.scale.z = 0.05; // Size of Text
+    //     marker_volume.color.a = 1;
+    //     marker_volume.color.r = 1;
+    //     marker_volume.color.g = 1;
+    //     marker_volume.color.b = 1;
+
+    //     marker_volume.lifetime = ros::Duration(0.5);
+
+    //     ma_volumeText.markers.push_back(marker_volume);
+
+    //     id_ma_volume++;
 
 
-    for (size_t m = 0; m < selected_cluster_missing.size(); ++m)
-    {
+    // }
 
-        double totalX = 0;
-        double totalY = 0;
-        double totalZ = 0;
 
-        for (size_t n = 0; n < selected_cluster_missing[m].size(); ++n)
-        {
 
-            size_t cluster_aux = selected_cluster_missing[m][n];
-
-            // double total_volume += vi[cluster_aux].getVolume();
-            // double totalX += vi[cluster_aux].getCenter().x() * vi[cluster_aux].getVolume();
-
-            // Calculate the sum of X
-            totalX += vi_missing[cluster_aux].getCenter().x();
-
-            // Calculate the sum of Y
-            totalY += vi_missing[cluster_aux].getCenter().y();
-
-            // Calculate the sum of Z
-            totalZ += vi_missing[cluster_aux].getCenter().z();
-        }
-
-        // Calculate the average of X
-        double averageX = 0;
-        averageX = totalX / selected_cluster_missing[m].size();
-
-        // Calculate the average of Y
-        double averageY = 0;
-        averageY = totalY / selected_cluster_missing[m].size();
-
-        // Calculate the average of Z
-        double averageZ = 0;
-        averageZ = totalZ / selected_cluster_missing[m].size();
-
-        ROS_INFO("Averages for Cluster Missing[%ld]: X: %f, Y: %f, Z: %f", m, averageX, averageY, averageZ);
-
-        visualization_msgs::Marker marker;
-        marker.header.frame_id = octree_frame_id ;
-        marker.header.stamp = ros::Time();
-        marker.ns = "centerOfMass";
-        marker.id = id_ma_centerofmass; //   ATENTION!!
-        marker.type = visualization_msgs::Marker::SPHERE;
-        marker.action = visualization_msgs::Marker::ADD;
-        marker.lifetime = ros::Duration(0.5);
-
-        marker.pose.position.x = averageX;
-        marker.pose.position.y = averageY;
-        marker.pose.position.z = averageZ;
-
-        marker.pose.orientation.x = 0.0;
-        marker.pose.orientation.y = 0.0;
-        marker.pose.orientation.z = 0.0;
-        marker.pose.orientation.w = 1.0;
-
-        marker.scale.x = 0.1;
-        marker.scale.y = 0.1;
-        marker.scale.z = 0.1;
-
-        marker.color.a = 0.8; // Don't forget to set the alpha!
-        marker.color.r = 0.0;
-        marker.color.g = 1.0;
-        marker.color.b = 0.0;
-
-        ma_centerofmass.markers.push_back(marker);
-
-        id_ma_centerofmass++;
-
-    }
 
 
     //Delete
