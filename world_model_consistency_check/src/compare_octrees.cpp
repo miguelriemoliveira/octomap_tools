@@ -48,7 +48,7 @@ bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2);
   |_________________________________| */
 
 
-void centerOfMass(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluster, visualization_msgs::MarkerArray ma, visualization_msgs::MarkerArray ma_volumeText, size_t &id, string frame_id)
+void centerOfMass(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluster, visualization_msgs::MarkerArray& ma, visualization_msgs::MarkerArray& ma_volumeText, size_t &id, string frame_id)
 {
 
     double cluster_volume = 0;
@@ -159,8 +159,8 @@ void centerOfMass(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluste
 
         marker_volume.scale.z = 0.05; // Size of Text
         marker_volume.color.a = 1;
-        marker_volume.color.r = 1;
-        marker_volume.color.g = 1;
+        marker_volume.color.r = 0;
+        marker_volume.color.g = 0;
         marker_volume.color.b = 1;
 
         marker_volume.lifetime = ros::Duration(0.5);
