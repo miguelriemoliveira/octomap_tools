@@ -195,7 +195,7 @@ void filterClustersByVolume(vector<ClassBoundingBox>& vi, vector< vector<size_t>
     for (size_t k = 0; k < cluster.size(); ++k)
     {
         //Assume all cells have the same volume
-        double cell_volume = vi[cluster[k][0]].getVolume();
+        double cell_volume = ((ClassBoundingBox) vi[cluster[k][0]]).getVolume();
         double cluster_volume = cell_volume * cluster[k].size();
 
         if (cluster_volume > volume_threshold)
@@ -204,7 +204,7 @@ void filterClustersByVolume(vector<ClassBoundingBox>& vi, vector< vector<size_t>
             // Iterates once per point of the cluster
             for (size_t l = 0; l < cluster[k].size(); ++l)
             {
-                size_t cluster_aux = cluster[k][l];
+                //size_t cluster_aux = cluster[k][l];
                 tmp.push_back(cluster[k][l]);
             }
             selected_cluster.push_back(tmp);
@@ -407,7 +407,7 @@ double missing_threshold_with_regions = 0.9;
 //ClassBoundingBox target_volume(-0.42, 0.42, -0.42, 0.42, 0.2, 3.0);
 //ClassBoundingBox target_volume(0.6, 1.4, -.7, .7, 0.6, 2.0);
 ClassBoundingBox target_volume(0.4, 2.0, -1.0, 1., 0.3, 2.2);
-std::string octree_frame_id = "kinect_rgb_optical_frame";
+std::string octree_frame_id = "world";
 bool flg_received_new_target = false;
 bool flg_received_point_cloud = false;
 AbstractOcTree* model_tree;
