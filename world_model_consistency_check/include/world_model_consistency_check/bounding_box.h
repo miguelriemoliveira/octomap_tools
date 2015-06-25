@@ -88,17 +88,21 @@ class ClassBoundingBox
         }
 
 
-        visualization_msgs::Marker getMarkerWithEdges(std::string ns, std::string frame_id, std_msgs::ColorRGBA color, int id)
+        visualization_msgs::Marker getMarkerWithEdges(std::string ns, std::string frame_id, std_msgs::ColorRGBA color, int id, bool permanent_markers=false)
         {
             visualization_msgs::Marker m = createMarker(ns, frame_id, color, id);
             m.type = visualization_msgs::Marker::LINE_STRIP;
             m.scale.x = 0.02;
-            m.lifetime = ros::Duration(0.5);
+            if (permanent_markers==false)
+                m.lifetime = ros::Duration(0.5);
+            else
+                m.lifetime = ros::Duration(0);
+
             getEdgesToDraw(m.points);
             return m;
         }
 
-        visualization_msgs::Marker getMarkerCubeVolume(std::string ns, std::string frame_id, std_msgs::ColorRGBA color, int id)
+        visualization_msgs::Marker getMarkerCubeVolume(std::string ns, std::string frame_id, std_msgs::ColorRGBA color, int id, bool permanent_markers=false)
         {
 
             visualization_msgs::Marker m = createMarker(ns, frame_id, color, id);
@@ -112,7 +116,10 @@ class ClassBoundingBox
             m.pose.position.x = (_max_x + _min_x)/2;
             m.pose.position.y = (_max_y + _min_y)/2;
             m.pose.position.z = (_max_z + _min_z)/2;
-            m.lifetime = ros::Duration(0.5);
+            if (permanent_markers==false)
+                m.lifetime = ros::Duration(0.5);
+            else
+                m.lifetime = ros::Duration(0);
             return m;
         }
 

@@ -30,7 +30,7 @@ void cloud_open_target (const sensor_msgs::PointCloud2ConstPtr& msg)
     grid.setInputCloud (cloud);
     grid.filter (*cloud_filtered);
 
-    pcl_ros::transformPointCloud("/map", *cloud_filtered, *cloud_transformed, *p_listener);
+    pcl_ros::transformPointCloud(ros::names::remap("/map"), *cloud_filtered, *cloud_transformed, *p_listener);
     //ROS_INFO("cloud_transformed->points.size() = %ld", cloud_transformed->points.size());
     //cloud_transformed->header.frame_id = "/map";
 

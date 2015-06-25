@@ -2,8 +2,9 @@
 <launch>
   <arg name="point_cloud_in" default="camera/depth/registered/points"/>
   <arg name="frame_id" default="camera_rgb_optical_frame"/>
+  <arg name="resolution" default="0.04"/>
   <node pkg="octomap_server" type="octomap_server_node" name="octomap_server">
-    <param name="resolution" value="0.04"/>
+    <param name="resolution" value="$(arg resolution)"/>
     <!--<param name="resolution" value="0.01" />-->
     <!--<param name="resolution" value="0.1" />-->
     <!-- fixed map frame (set to 'map' if SLAM or localization running!) -->

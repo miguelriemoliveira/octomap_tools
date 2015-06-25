@@ -334,6 +334,36 @@ bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2)
 
 
 
+    //double cx1 = b1.getCenter().x();
+    //double cy1 = b1.getCenter().y();
+    //double cz1 = b1.getCenter().z();
+
+    //double cx2 = b2.getCenter().x();
+    //double cy2 = b2.getCenter().y();
+    //double cz2 = b2.getCenter().z();
+
+    //double mx1 =  b1.getMinimumPoint().x();
+    //double my1 =  b1.getMinimumPoint().y();
+    //double mz1 =  b1.getMinimumPoint().z();
+
+    //double mx2 =  b2.getMinimumPoint().x();
+    //double my2 =  b2.getMinimumPoint().y();
+    //double mz2 =  b2.getMinimumPoint().z();
+    
+
+    //double dist_cx = sqrt((cx1-cx2)*(cx1-cx2));
+    //double dist_cy = sqrt((cy1-cy2)*(cy1-cy2));
+    //double dist_cz = sqrt((cz1-cz2)*(cx1-cz2));
+
+    //double dist_mx = abs(cx1 - mx1) + abs(cx2 - mx2);
+    //double dist_my = abs(cy1 - my1) + abs(cy2 - my2);
+    //double dist_mz = abs(cz1 - mz1) + abs(cz2 - mz2);
+
+    //if (dist_cx == dist_mx && dist_cz == dist_my && dist_cz == dist_mz)
+        //return true;
+    //else
+        //return false;
+
 
     double cx1 = b1.getCenter().x();
     double cy1 = b1.getCenter().y();
@@ -354,13 +384,13 @@ bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2)
 
     double dist_cx = sqrt((cx1-cx2)*(cx1-cx2));
     double dist_cy = sqrt((cy1-cy2)*(cy1-cy2));
-    double dist_cz = sqrt((cz1-cz2)*(cx1-cz2));
+    double dist_cz = sqrt((cz1-cz2)*(cz1-cz2));
 
     double dist_mx = abs(cx1 - mx1) + abs(cx2 - mx2);
     double dist_my = abs(cy1 - my1) + abs(cy2 - my2);
     double dist_mz = abs(cz1 - mz1) + abs(cz2 - mz2);
 
-    if (dist_cx == dist_mx && dist_cz == dist_my && dist_cz == dist_mz)
+    if (dist_cx <= dist_mx*1.05 && dist_cy <= dist_my*1.05 && dist_cz <= dist_mz*1.05)
         return true;
     else
         return false;
@@ -394,6 +424,7 @@ std::string topic_model = "/octomap_model";
 std::string topic_target = "/octomap_target";
 std::string topic_point_cloud = "/camera/depth_registered/points";
 bool use_regions = false;
+bool permanent_markers = false;
 
 unsigned char depth = 13;
 double volume_threshold = 0.7;
@@ -964,12 +995,13 @@ void compareCallback(const ros::TimerEvent&)
 
 
                 if (occupation_ratio <= exceeding_threshold && num_neighbors !=0) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
+                //if (occupation_ratio >= exceeding_threshold && num_neighbors !=0) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
                 {
                     //Inconsistencies of type exceeding 
                     // Add the inconsistency cell into a vector
                     vi.push_back(target_cell);
 
-                    ma_inconsistencies.markers.push_back(target_cell.getMarkerCubeVolume("target_inconsistent", octree_frame_id, color_inconsistent, ++id_inconsistencies));
+                    ma_inconsistencies.markers.push_back(target_cell.getMarkerCubeVolume("target_inconsistent", octree_frame_id, color_inconsistent, ++id_inconsistencies,permanent_markers));
                 }
             }
         }
@@ -1031,7 +1063,7 @@ void compareCallback(const ros::TimerEvent&)
                     // Add the inconsistency cell into a vector
                     vi_missing.push_back(model_cell);
 
-                    ma_inconsistencies.markers.push_back(model_cell.getMarkerCubeVolume("target_inconsistent", octree_frame_id, color_inconsistent_missing, ++id_inconsistencies));
+                    ma_inconsistencies.markers.push_back(model_cell.getMarkerCubeVolume("target_inconsistent", octree_frame_id, color_inconsistent_missing, ++id_inconsistencies,permanent_markers));
                 }
             }
         }
@@ -1217,10 +1249,8 @@ void compareCallback(const ros::TimerEvent&)
     //Information about clusters
 
     ROS_INFO("There are %ld clusters", cluster.size());
-    class_colormap cluster_colors("autumn", cluster.size(), 0.8);
 
     ROS_INFO("There are %ld clusters_missing", cluster_missing.size());
-    class_colormap cluster_missing_colors("winter", cluster_missing.size(), 0.8, true);
 
     // ROS_INFO("Number of clusters found %ld", cluster.size());
     // for (size_t i=0; i < cluster.size(); ++i)
@@ -1331,6 +1361,7 @@ void compareCallback(const ros::TimerEvent&)
     ROS_INFO("Selected %ld clusters suing volume threshold", selected_cluster.size());
 
 
+    class_colormap cluster_colors("autumn", selected_cluster.size(), 0.8);
 
     // ----------------------------------------------------
     // --------- Draws clusters on visualizer -------------
@@ -1342,7 +1373,7 @@ void compareCallback(const ros::TimerEvent&)
         for (size_t l = 0; l < selected_cluster[k].size(); ++l)
         {
             size_t cluster_aux = selected_cluster[k][l];
-            ma_clusters.markers.push_back(vi[cluster_aux].getMarkerCubeVolume("clusters", octree_frame_id, cluster_colors.color(k), ++id_clusters));
+            ma_clusters.markers.push_back(vi[cluster_aux].getMarkerCubeVolume("clusters", octree_frame_id, cluster_colors.color(k), ++id_clusters, permanent_markers));
         }
     }
 
@@ -1374,6 +1405,7 @@ void compareCallback(const ros::TimerEvent&)
     }
     ROS_INFO("Selected %ld clusters_missing using volume threshold", selected_cluster_missing.size());
 
+    class_colormap cluster_missing_colors("winter", selected_cluster_missing.size(), 0.8, true);
 
 
     // ----------------------------------------------------
@@ -1386,7 +1418,7 @@ void compareCallback(const ros::TimerEvent&)
         for (size_t l = 0; l < selected_cluster_missing[k].size(); ++l)
         {
             size_t cluster_aux = selected_cluster_missing[k][l];
-            ma_clusters.markers.push_back(vi_missing[cluster_aux].getMarkerCubeVolume("clusters", octree_frame_id, cluster_missing_colors.color(k), ++id_clusters));
+            ma_clusters.markers.push_back(vi_missing[cluster_aux].getMarkerCubeVolume("clusters", octree_frame_id, cluster_missing_colors.color(k), ++id_clusters, permanent_markers));
         }
     }
 
@@ -1791,6 +1823,7 @@ int main (int argc, char** argv)
     ros::param::get("~topic_model", topic_model);
     ros::param::get("~topic_target", topic_target);
     ros::param::get("~use_regions", use_regions);
+    ros::param::get("~permanent_markers", permanent_markers);
     if (use_regions)
     {
         load_regions();
