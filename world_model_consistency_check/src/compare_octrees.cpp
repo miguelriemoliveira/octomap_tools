@@ -441,8 +441,8 @@ ClassBoundingBox target_volume(0.4, 2.0, -1.0, 1., 0.3, 2.2);
 std::string octree_frame_id = "world";
 bool flg_received_new_target = false;
 bool flg_received_point_cloud = false;
-AbstractOcTree* model_tree;
-AbstractOcTree* target_tree;
+AbstractOcTree* model_tree = NULL;
+AbstractOcTree* target_tree = NULL;
 std::vector<ClassBoundingBox> boxes;
 
 /* _________________________________
@@ -490,15 +490,26 @@ void load_regions(void)
 
 void octomapCallbackModel(const octomap_msgs::Octomap::ConstPtr& msg)
 {
+    //return;
     //ROS_INFO("Received new octree model on topic %s with id: %s, frame_id: %s\n", topic_model.c_str(), msg->id.c_str(), msg->header.frame_id.c_str());
+    if (model_tree != NULL)
+    {
+        delete(model_tree);
+    }
+
     model_tree = msgToMap(*msg);
     octree_model = dynamic_cast<OcTree*>(model_tree);
-    //free(model_tree);
 }
 
 void octomapCallbackTarget(const octomap_msgs::Octomap::ConstPtr& msg)
 {
+
     //ROS_INFO("Received new octree target on topic %s with id: %s, frame_id: %s\n", topic_target.c_str(), msg->id.c_str(), msg->header.frame_id.c_str());
+    if (target_tree != NULL)
+    {
+        delete(target_tree);
+    }
+
     target_tree = msgToMap(*msg);
     octree_target = dynamic_cast<OcTree*>(target_tree);
     //free(target_tree);
