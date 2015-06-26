@@ -1114,7 +1114,7 @@ void compareCallback(const ros::TimerEvent&)
         vector<size_t> tmp;
         cluster.push_back(tmp);
 
-        ROS_INFO("Created cluster %ld ", cluster.size());
+        //ROS_INFO("Created cluster %ld ", cluster.size());
 
         //Expand seed
         vector <size_t> flood;
@@ -1166,7 +1166,7 @@ void compareCallback(const ros::TimerEvent&)
         }
 
 
-        ROS_INFO("Created cluster %ld with %ld points", cluster.size(), cluster[cluster.size()-1].size());
+        //ROS_INFO("Created cluster %ld with %ld points", cluster.size(), cluster[cluster.size()-1].size());
 
 
 
@@ -1199,7 +1199,7 @@ void compareCallback(const ros::TimerEvent&)
         vector<size_t> tmp;
         cluster_missing.push_back(tmp);
 
-        ROS_INFO("Created cluster_missing %ld ", cluster_missing.size());
+        // ROS_INFO("Created cluster_missing %ld ", cluster_missing.size());
 
         //Expand seed
         vector <size_t> flood;
@@ -1251,7 +1251,7 @@ void compareCallback(const ros::TimerEvent&)
         }
 
 
-        ROS_INFO("Created cluster_missing %ld with %ld points", cluster_missing.size(), cluster_missing[cluster_missing.size()-1].size());
+        //ROS_INFO("Created cluster_missing %ld with %ld points", cluster_missing.size(), cluster_missing[cluster_missing.size()-1].size());
 
 
 
@@ -1340,7 +1340,7 @@ void compareCallback(const ros::TimerEvent&)
 
 
 
-    ROS_INFO("Inconsistencies vector has %ld cells", vi.size());
+    //ROS_INFO("Inconsistencies vector has %ld cells", vi.size());
 
 
     /* ______________________________________
@@ -1414,7 +1414,7 @@ void compareCallback(const ros::TimerEvent&)
             selected_cluster_missing.push_back(tmp);
         }
     }
-    ROS_INFO("Selected %ld clusters_missing using volume threshold", selected_cluster_missing.size());
+    //ROS_INFO("Selected %ld clusters_missing using volume threshold", selected_cluster_missing.size());
 
     class_colormap cluster_missing_colors("winter", selected_cluster_missing.size(), 0.8, true);
 
