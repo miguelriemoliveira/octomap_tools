@@ -57,6 +57,15 @@ cv::Scalar class_colormap::cv_color(int i)
 	return s;
 }
 
+class_colormap::class_colormap(float r, float g, float  b, float alfa)
+{
+    int total = 1;
+    bool  reverse = false;
+	float v_r[64]={r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r};
+	float v_g[64]={g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g};
+	float v_b[64]={b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b};
+	setup_colormap(total, alfa, reverse, v_r, v_g, v_b);
+}
 
 class_colormap::class_colormap(std::string name, int total, float alfa, bool reverse)
 {
@@ -125,6 +134,8 @@ int class_colormap::setup_colormap(int total, float alfa, bool reverse, float* r
 
 	return 1;
 }
+
+
 
 //ALL THE COLORMAPS TAKEN FROM MATLAB
 int class_colormap::init_colormap_jet(int total, float alfa, bool reverse)

@@ -23,6 +23,18 @@ class class_colormap
 {
 	public:
 		class_colormap(std::string name, int total, float alfa, bool reverse=false);
+
+
+        /**
+         * @brief Create a fake colormap with a single color
+         *
+         * @param r the red value, 0-1
+         * @param g the green value, 0-1
+         * @param b the blue value, 0-1
+         * @param alfa the alpha value, 0-1
+         */
+		class_colormap(float r, float g, float  b, float alfa);
+
 		~class_colormap(void);
 
 		std_msgs::ColorRGBA color(int i);

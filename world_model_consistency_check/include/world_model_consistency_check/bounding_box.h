@@ -94,7 +94,7 @@ class ClassBoundingBox
             m.type = visualization_msgs::Marker::LINE_STRIP;
             m.scale.x = 0.02;
             if (permanent_markers==false)
-                m.lifetime = ros::Duration(0.5);
+                m.lifetime = ros::Duration(1.9);
             else
                 m.lifetime = ros::Duration(0);
 
@@ -117,7 +117,7 @@ class ClassBoundingBox
             m.pose.position.y = (_max_y + _min_y)/2;
             m.pose.position.z = (_max_z + _min_z)/2;
             if (permanent_markers==false)
-                m.lifetime = ros::Duration(0.5);
+                m.lifetime = ros::Duration(1.9);
             else
                 m.lifetime = ros::Duration(0);
             return m;
