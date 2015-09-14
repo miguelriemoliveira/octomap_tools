@@ -224,6 +224,7 @@ void filterClustersByVolume(vector<ClassBoundingBox>& vi, vector< vector<size_t>
 
 void clusterBoundingBoxes(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluster)
 {
+// Function to create Clusters by a flood fill algorithm.
 
     //Build the queue
     vector<size_t> queue;
@@ -232,78 +233,49 @@ void clusterBoundingBoxes(vector<ClassBoundingBox>& vi, vector< vector<size_t> >
         queue.push_back(i);
     }
 
-    // //Print the queue list
-    // for (size_t i=0; i != queue.size(); ++i)
-    // {
-    //     ROS_INFO("queue[%ld]=%ld", i, queue[i]);
-    // }
-
     while (queue.size() != 0)
     {
         //Select new seed
         size_t seed = queue[0]; 
         queue.erase(queue.begin() + 0); //remove first element
 
-        // ROS_INFO("Selected seed point %ld, queue has size=%ld", seed, queue.size());
-
         //Create new cluster
         vector<size_t> tmp;
         cluster.push_back(tmp);
-
-        //ROS_INFO("Created cluster %ld ", cluster.size());
 
         //Expand seed
         vector <size_t> flood;
         flood.push_back(seed);
 
-
         while (flood.size() != 0)
         {
 
-            //ROS_INFO("Expanding first elem of flood (size %ld) idx = %ld", flood.size(), flood[0]);
-            //expand flood[j]
             size_t idx_b1 = flood[0];
 
-
-            //ROS_INFO("Checking of queue size %ld", queue.size());
+            // Iterates over every still on the queue
             for (size_t j=0; j < queue.size(); ++j) 
             {
                 size_t idx_b2 = queue[j]; 
 
-                //ROS_INFO("Checking idx_b1 %ld idx_b2 %ld", idx_b1, idx_b2);
-
-
-                //char name[50];
-                //cout << "press a key to continue";
-                //cin >> name;
-
+                // Check if elements are neighbors
                 if (are_neighbors(vi[idx_b1], vi[idx_b2]))
                 {
-                    //ROS_INFO("Found neighbor idx %ld", idx_b2);
-                    //std::cout << 
                     flood.push_back(idx_b2);
                     queue.erase(queue.begin() + j);
-                    //TODO should be b2 or b1?
-
                 }
                 else
                 {
-                    //nothing to do 
+                    // do nothing
                 }
             }
 
+            // Add first element of Flood to Cluster
+            cluster.at(cluster.size()-1).push_back(flood[0]);
 
-
-            //add first elem of floodto cluster
-            cluster.at(cluster.size()-1).push_back(flood[0]); //add seed point to cluster
-
-            //remove first elem of  flood
+            // Remove first element of Flood
             flood.erase(flood.begin() + 0);
 
         }
-
-
-        //ROS_INFO("Created cluster %ld with %ld points", cluster.size(), cluster[cluster.size()-1].size());
     }
 }
 
