@@ -1191,7 +1191,6 @@ void compareCallback(const ros::TimerEvent&)
 
     ros::Duration d = (ros::Time::now() - t);
     ROS_INFO("Comparisson took %f secs", d.toSec());
-
 }
 
 void compareCallbackUsingRegions(const ros::TimerEvent&)
@@ -1417,6 +1416,8 @@ void compareCallbackUsingRegions(const ros::TimerEvent&)
 
 void callbackDynamicReconfigure(world_model_consistency_check::DepthConfigurationConfig &config, uint32_t level) 
 {
+// Callback to allow Dynamic Reconfiguration of several parameters
+
     ROS_INFO("Reconfigure Request: Setting comparison depth to %d",  config.depth);
     ROS_INFO("Reconfigure Request: Setting volume threshold to %f",  config.volume_threshold);
     ROS_INFO("Reconfigure Request: Setting missing threshold to %f",  config.missing_threshold);
@@ -1430,11 +1431,16 @@ void callbackDynamicReconfigure(world_model_consistency_check::DepthConfiguratio
     exceeding_threshold = (double) config.exceeding_threshold;
     missing_threshold_with_regions = (double) config.missing_threshold_with_regions;
     exceeding_threshold_with_regions = (double) config.exceeding_threshold_with_regions;
-
 }
 
 int main (int argc, char** argv)
 {
+// Spatial Inconsistencies Detection.
+// Two Modes of Comparison:
+// MODE 1: OctoMap to OctoMap Comparison
+// MODE 2: OctoMap to Regions Comparison 
+
+    // Node Handler Initialization
     ros::init(argc, argv, "compare_octrees");
     nh = (boost::shared_ptr<ros::NodeHandle>) new ros::NodeHandle;
 
@@ -1443,13 +1449,12 @@ int main (int argc, char** argv)
     ros::param::get("~topic_target", topic_target);
     ros::param::get("~use_regions", use_regions);
     ros::param::get("~permanent_markers", permanent_markers);
+
+    // OctoMap to Regions Comparison Mode
     if (use_regions)
     {
         load_regions();
     }
-
-    //Problem linking? check http://answers.ros.org/question/196935/roslib-reference-error/
-    //string path = ros::package::getPath("amazon_object_segmentation");
 
     //Setup the depth online configuration
     dynamic_reconfigure::Server<world_model_consistency_check::DepthConfigurationConfig> server;
@@ -1457,16 +1462,16 @@ int main (int argc, char** argv)
     f = boost::bind(&callbackDynamicReconfigure, _1, _2);
     server.setCallback(f);
 
-
     listener = (boost::shared_ptr<tf::TransformListener>) new (tf::TransformListener);
     ros::Duration(1).sleep(); // sleep for a second
-
 
     pc = (pcl::PointCloud<pcl::PointXYZRGB>::Ptr) new (pcl::PointCloud<pcl::PointXYZRGB>);
     pc2 = (pcl::PointCloud<pcl::PointXYZRGB>::Ptr) new (pcl::PointCloud<pcl::PointXYZRGB>);
     pcin = (pcl::PointCloud<pcl::PointXYZRGB>::Ptr) new (pcl::PointCloud<pcl::PointXYZRGB>);
 
     ros::Subscriber sub_model;
+
+    // OctoMap to OctoMap Comparison Mode
     if (!use_regions)
     {
         sub_model = nh->subscribe(topic_model, 0, octomapCallbackModel);
@@ -1476,6 +1481,8 @@ int main (int argc, char** argv)
     ros::Subscriber sub_pointcloud = nh->subscribe(topic_point_cloud, 0, pointCloudCallback);
 
     ros::Timer timer;
+
+    // OctoMap to OctoMap Comparison Mode
     if (!use_regions)
     {
         timer = nh->createTimer(ros::Duration(0.3), compareCallback);
@@ -1502,9 +1509,6 @@ int main (int argc, char** argv)
 
     pub_pointcloud = (boost::shared_ptr<ros::Publisher>) (new ros::Publisher);
     *pub_pointcloud = nh->advertise<sensor_msgs::PointCloud2>("/inconsistent_points", 0);
-
-
-
 
     ros::spin();
     return (0);
