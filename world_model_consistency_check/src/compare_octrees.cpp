@@ -458,8 +458,9 @@ void octomapCallbackTarget(const octomap_msgs::Octomap::ConstPtr& msg)
 
 void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 {
+// Callback responsible for retrieving a Point Cloud from a topic and storing in in a variable.
+
     pcl::fromROSMsg(*msg, *pcin);
-    //ROS_INFO("Received point cloud with frame_id %s", pcin )
     flg_received_point_cloud = true;
 }
 
