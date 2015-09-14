@@ -31,6 +31,51 @@ using namespace sensor_msgs;
 
 
 /* _________________________________
+   |                                 |
+   |        GLOBAL VARIABLES         |
+   |_________________________________| */
+
+
+boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > pc;
+boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > pc2;
+boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > pcin;
+boost::shared_ptr<ros::Publisher> pub;
+boost::shared_ptr<ros::Publisher> marker_pub;
+boost::shared_ptr<ros::Publisher> marker_pub_center_of_mass;
+boost::shared_ptr<ros::Publisher> marker_pub_volume;
+boost::shared_ptr<ros::Publisher> marker_pub_inconsistencies;
+boost::shared_ptr<ros::Publisher> marker_pub_clusters;
+boost::shared_ptr<ros::Publisher> pub_pointcloud;
+boost::shared_ptr<tf::TransformListener> listener;
+boost::shared_ptr<ros::NodeHandle> nh;
+
+OcTree* octree_model = NULL;
+OcTree* octree_target = NULL;
+
+std::string topic_model = "/octomap_model";
+std::string topic_target = "/octomap_target";
+std::string topic_point_cloud = "/camera/depth_registered/points";
+bool use_regions = false;
+bool permanent_markers = false;
+
+unsigned char depth = 13;
+double volume_threshold = 0.7;
+double exceeding_threshold = 0.2;
+double missing_threshold = 0.5;
+double exceeding_threshold_with_regions = 0.1;
+double missing_threshold_with_regions = 0.9;
+
+//Declare a ClassBoundingBox which defines the target_volume
+ClassBoundingBox target_volume(0.4, 2.0, -1.0, 1., 0.3, 2.2);
+
+std::string octree_frame_id = "world";
+bool flg_received_new_target = false;
+bool flg_received_point_cloud = false;
+AbstractOcTree* model_tree = NULL;
+AbstractOcTree* target_tree = NULL;
+std::vector<ClassBoundingBox> boxes;
+
+/* _________________________________
   |                                 |
   |       FUNCTION PROTOTYPES       |
   |_________________________________| */
@@ -319,58 +364,12 @@ bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2)
         return true;
     else
         return false;
-
 }
 
 
 /* _________________________________
    |                                 |
-   |        GLOBAL VARIABLES         |
-   |_________________________________| */
-
-
-boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > pc;
-boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > pc2;
-boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > pcin;
-boost::shared_ptr<ros::Publisher> pub;
-boost::shared_ptr<ros::Publisher> marker_pub;
-boost::shared_ptr<ros::Publisher> marker_pub_center_of_mass;
-boost::shared_ptr<ros::Publisher> marker_pub_volume;
-boost::shared_ptr<ros::Publisher> marker_pub_inconsistencies;
-boost::shared_ptr<ros::Publisher> marker_pub_clusters;
-boost::shared_ptr<ros::Publisher> pub_pointcloud;
-boost::shared_ptr<tf::TransformListener> listener;
-boost::shared_ptr<ros::NodeHandle> nh;
-
-OcTree* octree_model = NULL;
-OcTree* octree_target = NULL;
-
-std::string topic_model = "/octomap_model";
-std::string topic_target = "/octomap_target";
-std::string topic_point_cloud = "/camera/depth_registered/points";
-bool use_regions = false;
-bool permanent_markers = false;
-
-unsigned char depth = 13;
-double volume_threshold = 0.7;
-double exceeding_threshold = 0.2;
-double missing_threshold = 0.5;
-double exceeding_threshold_with_regions = 0.1;
-double missing_threshold_with_regions = 0.9;
-
-//Declare a ClassBoundingBox which defines the target_volume
-ClassBoundingBox target_volume(0.4, 2.0, -1.0, 1., 0.3, 2.2);
-
-std::string octree_frame_id = "world";
-bool flg_received_new_target = false;
-bool flg_received_point_cloud = false;
-AbstractOcTree* model_tree = NULL;
-AbstractOcTree* target_tree = NULL;
-std::vector<ClassBoundingBox> boxes;
-
-/* _________________________________
-   |                                 |
-   |           Callbacks             |
+   |           CALLBACKS             |
    |_________________________________| */
 
 void load_regions(void)
@@ -460,6 +459,25 @@ void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
     flg_received_point_cloud = true;
 }
 
+void callbackDynamicReconfigure(world_model_consistency_check::DepthConfigurationConfig &config, uint32_t level) 
+{
+// Callback to allow Dynamic Reconfiguration of several parameters
+
+    ROS_INFO("Reconfigure Request: Setting comparison depth to %d",  config.depth);
+    ROS_INFO("Reconfigure Request: Setting volume threshold to %f",  config.volume_threshold);
+    ROS_INFO("Reconfigure Request: Setting missing threshold to %f",  config.missing_threshold);
+    ROS_INFO("Reconfigure Request: Setting exceeding threshold to %f",  config.exceeding_threshold);
+    ROS_INFO("Reconfigure Request: Setting missing threshold with regions to %f", config.missing_threshold_with_regions);
+    ROS_INFO("Reconfigure Request: Setting exceeding threshold with regions to %f", config.exceeding_threshold_with_regions);
+
+    depth = (unsigned char) config.depth;
+    volume_threshold = (double) config.volume_threshold;
+    missing_threshold = (double) config.missing_threshold;
+    exceeding_threshold = (double) config.exceeding_threshold;
+    missing_threshold_with_regions = (double) config.missing_threshold_with_regions;
+    exceeding_threshold_with_regions = (double) config.exceeding_threshold_with_regions;
+}
+
 void compareCallback(const ros::TimerEvent&)
 {
 // MODE 1: COMPARE TWO OCTOMAPS
@@ -507,7 +525,6 @@ void compareCallback(const ros::TimerEvent&)
     size_t id=0;
     size_t id_inconsistencies=0;
     size_t id_noneighbors=0;
-    size_t id_clusters=0;
 
     // Color initialization
     std_msgs::ColorRGBA color_occupied;
@@ -592,7 +609,6 @@ void compareCallback(const ros::TimerEvent&)
     }
 
 
-
     // Iterates over MODEL Octree
     for(OcTree::leaf_bbx_iterator it = octree_model->begin_leafs_bbx(target_volume.getMinimumPoint(), target_volume.getMaximumPoint(), depth), end=octree_model->end_leafs_bbx(); it!= end; ++it)
     {
@@ -650,488 +666,45 @@ void compareCallback(const ros::TimerEvent&)
     }
 
 
-
-    /* _________________________________
-       |                                 |
-       |     for the EXCEEDING clusters  |
-       |_________________________________| */
-
-
-    //Build the queue
-    vector<size_t> queue;
-    for (size_t i=0; i != vi.size(); ++i)
-    {
-        queue.push_back(i);
-    }
-
-    vector< vector<size_t> > cluster; 
-
-    while (queue.size() != 0)
-    {
-        //Select new seed
-        size_t seed = queue[0]; 
-        queue.erase(queue.begin() + 0); //remove first element
-
-        //Create new cluster
-        vector<size_t> tmp;
-        cluster.push_back(tmp);
-
-        //Expand seed
-        vector <size_t> flood;
-        flood.push_back(seed);
-
-        while (flood.size() != 0)
-        {
-
-            size_t idx_b1 = flood[0];
-
-            // Iterates over every cell still on the queue
-            for (size_t j=0; j < queue.size(); ++j) 
-            {
-                size_t idx_b2 = queue[j]; 
-
-                // Check if elements are neighbors
-                if (are_neighbors(vi[idx_b1], vi[idx_b2]))
-                {
-                    flood.push_back(idx_b2);
-                    queue.erase(queue.begin() + j);
-
-                }
-                else
-                {
-                    // Do nothing
-                }
-            }
-
-            // Add first element of Flood to Cluster
-            cluster.at(cluster.size()-1).push_back(flood[0]); //add seed point to cluster
-
-            // Remove first element of Flood to Cluster
-            flood.erase(flood.begin() + 0);
-        }
-    }
-
-
-    /* _________________________________
-       |                                 |
-       |     for the missing clusters    |
-       |_________________________________| */
-
-
-    //Build the queue
-    vector<size_t> queue_missing;
-    for (size_t i=0; i != vi_missing.size(); ++i)
-    {
-        queue_missing.push_back(i);
-    }
-
-    vector< vector<size_t> > cluster_missing; 
-
-    while (queue_missing.size() != 0)
-    {
-        //Select new seed
-        size_t seed = queue_missing[0]; 
-        queue_missing.erase(queue_missing.begin() + 0); //remove first element
-
-        //Create new cluster
-        vector<size_t> tmp;
-        cluster_missing.push_back(tmp);
-
-        //Expand seed
-        vector <size_t> flood;
-        flood.push_back(seed);
-
-        while (flood.size() != 0)
-        {
-            size_t idx_b1 = flood[0];
-
-            // Iterates over every cell still on the queue
-            for (size_t j=0; j < queue_missing.size(); ++j) 
-            {
-                size_t idx_b2 = queue_missing[j]; 
-
-                // Check if elements are neighbors
-                if (are_neighbors(vi_missing[idx_b1], vi_missing[idx_b2]))
-                {
-                    flood.push_back(idx_b2);
-                    queue_missing.erase(queue_missing.begin() + j);
-                }
-                else
-                {
-                    // do nothing
-                }
-            }
-
-            // Add first element of Flood to Cluster
-            cluster_missing.at(cluster_missing.size()-1).push_back(flood[0]); //add seed point to cluster
-
-            // Remove first element of Flood
-            flood.erase(flood.begin() + 0);
-        }
-    }
-
-    //Information about clusters
+    // Cluster the EXCEEDING cells
+    vector< vector<size_t> > cluster;
+    clusterBoundingBoxes(vi, cluster);
     ROS_INFO("There are %ld clusters", cluster.size());
+    class_colormap cluster_colors("autumn", cluster.size(), 0.8);
+
+    // Cluster the MISSING cells
+    vector< vector<size_t> > cluster_missing; 
+    clusterBoundingBoxes(vi_missing, cluster_missing);
     ROS_INFO("There are %ld clusters_missing", cluster_missing.size());
+    class_colormap cluster_missing_colors("summer", cluster_missing.size(), 0.8);
 
-
-    /* ______________________________________
-       |                                      |
-       |    Exceeding Clusters                |
-       |________________________________      | */
-
-    //Filter clusters using volume threshold
-
+    //Select only EXCEEDING clusters above a given volume threshold
     vector< vector<size_t> > selected_cluster; 
+    filterClustersByVolume(vi, cluster, selected_cluster, volume_threshold);
+    ROS_INFO("Selected %ld clusters using volume threshold", selected_cluster.size());
 
-    // Iterates once per Cluster
-    for (size_t k = 0; k < cluster.size(); ++k)
-    {
-        //Assume all cells have the same volume
-        double cell_volume = vi[cluster[k][0]].getVolume();
-        
-        // Cluster Volume calculation
-        double cluster_volume = cell_volume * cluster[k].size();
-
-        // Filtering by a given Volume Threshold
-        if (cluster_volume > volume_threshold)
-        {
-            vector<size_t> tmp;
-
-            // Iterates once per point of the cluster
-            for (size_t l = 0; l < cluster[k].size(); ++l)
-            {
-                size_t cluster_aux = cluster[k][l];
-                tmp.push_back(cluster[k][l]);
-            }
-
-            // Stores the Filtered Cluster
-            selected_cluster.push_back(tmp);
-        }
-    }
-
-
-    class_colormap cluster_colors("autumn", selected_cluster.size(), 0.8);
-
-    // Draws cluster on visualizer
-    // Iterates once per cluster
-    for (size_t k = 0; k < selected_cluster.size(); ++k)
-    {
-        // Iterates once per point of the cluster
-        for (size_t l = 0; l < selected_cluster[k].size(); ++l)
-        {
-            size_t cluster_aux = selected_cluster[k][l];
-            ma_clusters.markers.push_back(vi[cluster_aux].getMarkerCubeVolume("clusters", octree_frame_id, cluster_colors.color(k), ++id_clusters, permanent_markers));
-        }
-    }
-
-
-    /* ______________________________________
-       | 
-       |    Missing Clusters                  |
-       |________________________________      | */
-
-    //Filter clusters using volume threshold |
-
+    //Select only MISSING clusters above a given volume threshold
     vector< vector<size_t> > selected_cluster_missing; 
+    filterClustersByVolume(vi_missing, cluster_missing, selected_cluster_missing, volume_threshold);
+    ROS_INFO("Selected %ld clusters_missing using volume threshold", selected_cluster_missing.size());
 
-    // Iterates once per Cluster
-    for (size_t k = 0; k < cluster_missing.size(); ++k)
-    {
-        //Assume all cells have the same volume
-        double cell_volume = vi_missing[cluster_missing[k][0]].getVolume();
-        
-        // Cluster Volume calculation
-        double cluster_volume = cell_volume * cluster_missing[k].size();
+    //Draw filtered inconsistencies clusters in RVIZ
+    class_colormap inconsistencies_colors(0.5,0,0,0.4);
+    clustersToMarkerArray(vi, selected_cluster, ma_inconsistencies, id_inconsistencies, octree_frame_id, "inconsistencies", inconsistencies_colors);
+    class_colormap inconsistencies_missing_colors(0,0.5,0,0.4);
+    clustersToMarkerArray(vi_missing, selected_cluster_missing, ma_inconsistencies, id_inconsistencies, octree_frame_id, "inconsistencies", inconsistencies_missing_colors);
 
-        // Filtering by a given Volume Threshold
-        if (cluster_volume > volume_threshold)
-        {
-            vector<size_t> tmp;
+    // Draw all the clusters in RVIZ
+    size_t id_clusters=0;
+    clustersToMarkerArray(vi, selected_cluster, ma_clusters, id_clusters, octree_frame_id, "clusters", cluster_colors);
+    clustersToMarkerArray(vi_missing, selected_cluster_missing, ma_clusters, id_clusters, octree_frame_id, "clusters", cluster_missing_colors);
 
-            // Iterates once per point of the cluster
-            for (size_t l = 0; l < cluster_missing[k].size(); ++l)
-            {
-                size_t cluster_aux = cluster_missing[k][l];
-                tmp.push_back(cluster_missing[k][l]);
-            }
-
-            // Stores the Filtered Clusters
-            selected_cluster_missing.push_back(tmp);
-        }
-    }
-
-    class_colormap cluster_missing_colors("winter", selected_cluster_missing.size(), 0.8, true);
-
-    // Draws cluster on visualizer
-    // Iterates once per cluster
-    for (size_t k = 0; k < selected_cluster_missing.size(); ++k)
-    {
-        // Iterates once per point of the cluster_missing
-        for (size_t l = 0; l < selected_cluster_missing[k].size(); ++l)
-        {
-            size_t cluster_aux = selected_cluster_missing[k][l];
-            ma_clusters.markers.push_back(vi_missing[cluster_aux].getMarkerCubeVolume("clusters", octree_frame_id, cluster_missing_colors.color(k), ++id_clusters, permanent_markers));
-        }
-    }
-
-
-
-
-
-    /* ______________________________________
-       |                                      |
-       |    Exceeding Clusters                |
-       |________________________________      | */
-
-    // Center of Mass of Clusters
-
-    // Visualization Message Marker Array for the center of mass
+    // Draw the Center of Mass Sphere and Volume Information
     visualization_msgs::MarkerArray ma_centerofmass;
-    int id_ma_centerofmass = 0;
-
-    // For each Cluster
-    for (size_t m = 0; m < selected_cluster.size(); ++m)
-    {
-
-        double totalX = 0;
-        double totalY = 0;
-        double totalZ = 0;
-
-        // Iterate each cell inside a given Cluster
-        for (size_t n = 0; n < selected_cluster[m].size(); ++n)
-        {
-
-            size_t cluster_aux = selected_cluster[m][n];
-
-            // Calculate the sum of X
-            totalX += vi[cluster_aux].getCenter().x();
-
-            // Calculate the sum of Y
-            totalY += vi[cluster_aux].getCenter().y();
-
-            // Calculate the sum of Z
-            totalZ += vi[cluster_aux].getCenter().z();
-        }
-
-        // Calculate the average of X
-        double averageX = 0;
-        averageX = totalX / selected_cluster[m].size();
-
-        // Calculate the average of Y
-        double averageY = 0;
-        averageY = totalY / selected_cluster[m].size();
-
-        // Calculate the average of Z
-        double averageZ = 0;
-        averageZ = totalZ / selected_cluster[m].size();
-
-        ROS_INFO("Averages for Cluster Exceeding[%ld]: X: %f, Y: %f, Z: %f", m, averageX, averageY, averageZ);
-
-        visualization_msgs::Marker marker;
-        marker.header.frame_id = octree_frame_id ;
-        marker.header.stamp = ros::Time();
-        marker.ns = "centerOfMass";
-        marker.id = id_ma_centerofmass; //   ATENTION!!
-        marker.type = visualization_msgs::Marker::SPHERE;
-        marker.action = visualization_msgs::Marker::ADD;
-        marker.lifetime = ros::Duration(1.9);
-
-        marker.pose.position.x = averageX;
-        marker.pose.position.y = averageY;
-        marker.pose.position.z = averageZ;
-
-        marker.pose.orientation.x = 0.0;
-        marker.pose.orientation.y = 0.0;
-        marker.pose.orientation.z = 0.0;
-        marker.pose.orientation.w = 1.0;
-
-        marker.scale.x = 0.1;
-        marker.scale.y = 0.1;
-        marker.scale.z = 0.1;
-
-        marker.color.a = 0.8; // Don't forget to set the alpha!
-        marker.color.r = 1.0;
-        marker.color.g = 0.0;
-        marker.color.b = 0.0;
-
-        ma_centerofmass.markers.push_back(marker);
-
-        id_ma_centerofmass++;
-    }
-
-
-    // Print Volume of Clusters
-    
-    // Visualization Message Marker Array for the center of mass
     visualization_msgs::MarkerArray ma_volumeText;
-    int id_ma_volume = 0;
-
-    // For each Cluster
-    for (size_t m = 0; m < selected_cluster.size(); ++m)
-    {
-
-        double totalX = 0;
-        double totalY = 0;
-        double totalZ = 0;
-
-        // Iterates each cell inside a given Cluster
-        for (size_t n = 0; n < selected_cluster[m].size(); ++n)
-        {
-
-            size_t cluster_aux = selected_cluster[m][n];
-
-            // Calculate the sum of X
-            totalX += vi[cluster_aux].getCenter().x();
-
-            // Calculate the sum of Y
-            totalY += vi[cluster_aux].getCenter().y();
-
-            // Calculate the sum of Z
-            totalZ += vi[cluster_aux].getCenter().z();
-        }
-
-        // Calculate the average of X
-        double averageX = 0;
-        averageX = totalX / selected_cluster[m].size();
-
-        // Calculate the average of Y
-        double averageY = 0;
-        averageY = totalY / selected_cluster[m].size();
-
-        // Calculate the average of Z
-        double averageZ = 0;
-        averageZ = totalZ / selected_cluster[m].size();
-
-        // Compute the volume
-        // Assume all cells have the same volume
-        double cell_volume = vi[selected_cluster[m][0]].getVolume();
-        double cluster_volume = cell_volume * selected_cluster[m].size();
-
-        // Create the marker
-        visualization_msgs::Marker marker_volume;
-        marker_volume.header.frame_id = octree_frame_id ;
-        marker_volume.header.stamp = ros::Time();
-        marker_volume.ns = "volume";
-        marker_volume.id = id_ma_volume; //   ATENTION!!
-        marker_volume.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-        marker_volume.action = visualization_msgs::Marker::ADD;
-
-        marker_volume.pose.position.x = averageX;
-        marker_volume.pose.position.y = averageY;
-        marker_volume.pose.position.z = averageZ;
-
-        // Convertion double to string
-        std::ostringstream os;
-        char ss[1024];
-
-        sprintf(ss, "%0.6f", cluster_volume);
-        std::string str_volume = ss;
-
-        sprintf(ss, "%0.3f", averageX);
-        std::string str_averageX = ss;
-
-        sprintf(ss, "%0.3f", averageY);
-        std::string str_averageY = ss;
-
-        sprintf(ss, "%0.3f", averageZ);
-        std::string str_averageZ = ss;
-
-        marker_volume.text = std::string("X: ") + str_averageX + std::string(" Y: ") + str_averageY + std::string(" Z: ") + str_averageZ + "\n" + std::string("Volume: ") + str_volume;
-
-        marker_volume.scale.z = 0.05; // Size of Text
-        marker_volume.color.a = 1;
-        marker_volume.color.r = 1;
-        marker_volume.color.g = 1;
-        marker_volume.color.b = 1;
-
-        marker_volume.lifetime = ros::Duration(1.9);
-
-        ma_volumeText.markers.push_back(marker_volume);
-
-        id_ma_volume++;
-    }
-
-
-
-    /* ______________________________________
-       |                                      |
-       |    Missing Clusters                  |
-       |________________________________      | */
-
-
-    // Center of Mass of Clusters
-
-    // For each Cluster
-    for (size_t m = 0; m < selected_cluster_missing.size(); ++m)
-    {
-
-        double totalX = 0;
-        double totalY = 0;
-        double totalZ = 0;
-
-        // Iterates each cell inside a given Cluster
-        for (size_t n = 0; n < selected_cluster_missing[m].size(); ++n)
-        {
-
-            size_t cluster_aux = selected_cluster_missing[m][n];
-
-            // Calculate the sum of X
-            totalX += vi_missing[cluster_aux].getCenter().x();
-
-            // Calculate the sum of Y
-            totalY += vi_missing[cluster_aux].getCenter().y();
-
-            // Calculate the sum of Z
-            totalZ += vi_missing[cluster_aux].getCenter().z();
-        }
-
-        // Calculate the average of X
-        double averageX = 0;
-        averageX = totalX / selected_cluster_missing[m].size();
-
-        // Calculate the average of Y
-        double averageY = 0;
-        averageY = totalY / selected_cluster_missing[m].size();
-
-        // Calculate the average of Z
-        double averageZ = 0;
-        averageZ = totalZ / selected_cluster_missing[m].size();
-
-        ROS_INFO("Averages for Cluster Missing[%ld]: X: %f, Y: %f, Z: %f", m, averageX, averageY, averageZ);
-
-        visualization_msgs::Marker marker;
-        marker.header.frame_id = octree_frame_id ;
-        marker.header.stamp = ros::Time();
-        marker.ns = "centerOfMass";
-        marker.id = id_ma_centerofmass; //   ATENTION!!
-        marker.type = visualization_msgs::Marker::SPHERE;
-        marker.action = visualization_msgs::Marker::ADD;
-        marker.lifetime = ros::Duration(1.9);
-
-        marker.pose.position.x = averageX;
-        marker.pose.position.y = averageY;
-        marker.pose.position.z = averageZ;
-
-        marker.pose.orientation.x = 0.0;
-        marker.pose.orientation.y = 0.0;
-        marker.pose.orientation.z = 0.0;
-        marker.pose.orientation.w = 1.0;
-
-        marker.scale.x = 0.1;
-        marker.scale.y = 0.1;
-        marker.scale.z = 0.1;
-
-        marker.color.a = 0.8; // Don't forget to set the alpha!
-        marker.color.r = 0.0;
-        marker.color.g = 1.0;
-        marker.color.b = 0.0;
-
-        ma_centerofmass.markers.push_back(marker);
-
-        id_ma_centerofmass++;
-
-    }
+    size_t id_ma_centerofmass = 0;
+    centerOfMass(vi, selected_cluster, ma_centerofmass, ma_volumeText, id_ma_centerofmass, octree_frame_id);
+    centerOfMass(vi_missing, selected_cluster_missing, ma_centerofmass, ma_volumeText, id_ma_centerofmass, octree_frame_id);
 
     // ???Volume Calculation???
 
@@ -1414,24 +987,11 @@ void compareCallbackUsingRegions(const ros::TimerEvent&)
     ROS_INFO("Comparisson took %f secs", d.toSec());
 }
 
-void callbackDynamicReconfigure(world_model_consistency_check::DepthConfigurationConfig &config, uint32_t level) 
-{
-// Callback to allow Dynamic Reconfiguration of several parameters
 
-    ROS_INFO("Reconfigure Request: Setting comparison depth to %d",  config.depth);
-    ROS_INFO("Reconfigure Request: Setting volume threshold to %f",  config.volume_threshold);
-    ROS_INFO("Reconfigure Request: Setting missing threshold to %f",  config.missing_threshold);
-    ROS_INFO("Reconfigure Request: Setting exceeding threshold to %f",  config.exceeding_threshold);
-    ROS_INFO("Reconfigure Request: Setting missing threshold with regions to %f", config.missing_threshold_with_regions);
-    ROS_INFO("Reconfigure Request: Setting exceeding threshold with regions to %f", config.exceeding_threshold_with_regions);
-
-    depth = (unsigned char) config.depth;
-    volume_threshold = (double) config.volume_threshold;
-    missing_threshold = (double) config.missing_threshold;
-    exceeding_threshold = (double) config.exceeding_threshold;
-    missing_threshold_with_regions = (double) config.missing_threshold_with_regions;
-    exceeding_threshold_with_regions = (double) config.exceeding_threshold_with_regions;
-}
+/* _________________________________
+   |                                 |
+   |              MAIN               |
+   |_________________________________| */
 
 int main (int argc, char** argv)
 {
