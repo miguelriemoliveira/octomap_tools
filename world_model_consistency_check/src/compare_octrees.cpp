@@ -464,375 +464,6 @@ void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
     flg_received_point_cloud = true;
 }
 
-void compareCallbackUsingRegions(const ros::TimerEvent&)
-{
-    ros::Time t= ros::Time::now();
-
-    ROS_INFO("Compare callback using regions triggered");
-
-    // Checks if the OcTree Target was already received
-    if (octree_target == NULL)
-    {
-        ROS_INFO("OcTree Target Not Found");
-        return;   
-    }
-
-    if (flg_received_new_target==true)
-    {
-        flg_received_new_target = false;
-    }
-    else
-    {
-        return;
-    }
-
-    // Visualization Message Marker Array
-    visualization_msgs::MarkerArray ma;
-    visualization_msgs::MarkerArray ma_inconsistencies;
-    visualization_msgs::MarkerArray ma_clusters;
-
-    visualization_msgs::Marker marker_deleteall;
-    marker_deleteall.header.stamp = ros::Time();
-    marker_deleteall.header.frame_id = octree_frame_id ;
-    marker_deleteall.ns = "target_inconsistent";
-    marker_deleteall.action = 3;
-
-    size_t id=0;
-    size_t id_inconsistencies=0;
-    size_t id_noneighbors=0;
-
-    // Color initialization
-    std_msgs::ColorRGBA color_occupied;
-    color_occupied.r = 0; color_occupied.g = 0; color_occupied.b = 0.5; color_occupied.a = .8;
-
-    std_msgs::ColorRGBA color_inconsistent;
-    color_inconsistent.r = .5; color_inconsistent.g = 0; color_inconsistent.b = 0; color_inconsistent.a = .4;
-    std_msgs::ColorRGBA color_inconsistent_missing;
-    color_inconsistent_missing.r = .0; color_inconsistent_missing.g = 0.5; color_inconsistent_missing.b = 0; color_inconsistent_missing.a = .4;
-
-
-    std_msgs::ColorRGBA color_target_volume;
-    color_target_volume.r = .5; color_target_volume.g = 0.5; color_target_volume.b = 0; color_target_volume.a = 1;
-
-    std_msgs::ColorRGBA color_noneighbors;
-    color_noneighbors.r = .5; color_noneighbors.g = 0; color_noneighbors.b = 1; color_noneighbors.a = .8;
-
-
-    // Vector of Inconsistencies initialization
-    std::vector<ClassBoundingBox> vi;
-    std::vector<ClassBoundingBox> vi_missing;
-
-    // Creates the target volume message array
-    ma.markers.push_back(target_volume.getMarkerWithEdges("target_volume", octree_frame_id , color_target_volume, ++id));
-
-
-    ROS_INFO_STREAM("Starting Iteration");
-
-
-    for (size_t i=0; i < boxes.size(); ++i)
-    {
-        size_t num_occupied = 0;
-        size_t num_neighbors = 0;
-
-        // -------------------------------------------------------------
-        // ----------- Iterate over target octree ----------------------
-        // -------------------------------------------------------------
-        for(OcTree::leaf_bbx_iterator it = octree_target->begin_leafs_bbx(boxes[i].getMinimumPoint(), boxes[i].getMaximumPoint(), depth), end=octree_target->end_leafs_bbx(); it!= end; ++it)
-        {
-            if (octree_target->search(it.getKey())) // Verifies if the node exists
-            {
-                //if (octree_target->isNodeOccupied(*it)) 
-                //{
-                //ClassBoundingBox target_cell(it.getX(), it.getY(), it.getZ(), it.getSize());
-
-                //ma.markers.push_back(target_cell.getMarkerWithEdges("target_occupied", octree_frame_id , color_occupied, ++id));
-
-                num_neighbors++;
-
-                if (!octree_target->isNodeOccupied(*it)) // Verifies if the node is free
-                {
-                    //Do something here - Draw node, etc
-                }
-                else
-                {
-                    num_occupied++;
-                    //flg_found_at_least_one_occupied = true;
-                }
-
-            }
-        }
-
-            double occupation_ratio=0;
-            if (num_neighbors !=0)
-            {
-                occupation_ratio = (double)num_occupied/(double)num_neighbors;
-            }
-
-
-            if (boxes[i].occupied == false && occupation_ratio >= exceeding_threshold_with_regions && num_neighbors !=0) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
-            {
-                //Inconsistencies of type exceeding 
-                // Add the inconsistency cell into a vector
-                vi.push_back(boxes[i]);
-
-                //ma_inconsistencies.markers.push_back(boxes[i].getMarkerCubeVolume("target_inconsistent", octree_frame_id, color_inconsistent, ++id_inconsistencies));
-            }
-
-            if (boxes[i].occupied == true && occupation_ratio <= missing_threshold_with_regions && num_neighbors !=0) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
-                {
-                    //Inconsistencies of type exceeding 
-                    // Add the inconsistency cell into a vector
-                    vi_missing.push_back(boxes[i]);
-
-                    //ma_inconsistencies.markers.push_back(boxes[i].getMarkerCubeVolume("target_inconsistent", octree_frame_id, color_inconsistent_missing, ++id_inconsistencies));
-                }
-    }
-
-
-
-    //Cluster the exceeding bounding boxes
-    vector< vector<size_t> > cluster; 
-    clusterBoundingBoxes(vi, cluster);
-    ROS_INFO("There are %ld clusters", cluster.size());
-    class_colormap cluster_colors("autumn", cluster.size(), 0.8);
-
-    vector< vector<size_t> > cluster_missing; 
-    clusterBoundingBoxes(vi_missing, cluster_missing);
-    ROS_INFO("There are %ld clusters_missing", cluster_missing.size());
-    class_colormap cluster_missing_colors("summer", cluster_missing.size(), 0.8);
-
-    //Select only clusters above a given volume threshold
-    vector< vector<size_t> > selected_cluster; 
-    filterClustersByVolume(vi, cluster, selected_cluster, volume_threshold);
-    ROS_INFO("Selected %ld clusters using volume threshold", selected_cluster.size());
-
-    vector< vector<size_t> > selected_cluster_missing; 
-    filterClustersByVolume(vi_missing, cluster_missing, selected_cluster_missing, volume_threshold);
-    ROS_INFO("Selected %ld clusters_missing using volume threshold", selected_cluster_missing.size());
-
-    //Draw selected clusters in RVIZ
-    class_colormap inconsistencies_colors(0.5,0,0,0.4);
-    clustersToMarkerArray(vi, selected_cluster, ma_inconsistencies, id_inconsistencies, octree_frame_id, "inconsistencies", inconsistencies_colors);
-    class_colormap inconsistencies_missing_colors(0,0.5,0,0.4);
-    clustersToMarkerArray(vi_missing, selected_cluster_missing, ma_inconsistencies, id_inconsistencies, octree_frame_id, "inconsistencies", inconsistencies_missing_colors);
-
-
-
-    size_t id_clusters=0;
-    clustersToMarkerArray(vi, selected_cluster, ma_clusters, id_clusters, octree_frame_id, "clusters", cluster_colors);
-    clustersToMarkerArray(vi_missing, selected_cluster_missing, ma_clusters, id_clusters, octree_frame_id, "clusters", cluster_missing_colors);
-
-
-
-    // Draw the Center of Mass Sphere and Volume Information
-    visualization_msgs::MarkerArray ma_centerofmass;
-    visualization_msgs::MarkerArray ma_volumeText;
-    size_t id_ma_centerofmass = 0;
-    centerOfMass(vi, selected_cluster, ma_centerofmass, ma_volumeText, id_ma_centerofmass, octree_frame_id);
-    centerOfMass(vi_missing, selected_cluster_missing, ma_centerofmass, ma_volumeText, id_ma_centerofmass, octree_frame_id);
-
-
-
-
-    // }
-
-
-    // /* ______________________________________
-    //    |                                      |
-    //    |    Exceeding Clusters                |
-    //    |________________________________      | */
-
-    // // ----------------------------------------------------
-    // // ----------- Print Volume of Clusters ---------------
-    // // ----------------------------------------------------
-
-    // // Visualization Message Marker Array for the center of mass
-    // visualization_msgs::MarkerArray ma_volumeText;
-    // int id_ma_volume = 0;
-
-    // for (size_t m = 0; m < selected_cluster.size(); ++m)
-    // {
-
-    //     double totalX = 0;
-    //     double totalY = 0;
-    //     double totalZ = 0;
-
-    //     for (size_t n = 0; n < selected_cluster[m].size(); ++n)
-    //     {
-
-    //         size_t cluster_aux = selected_cluster[m][n];
-
-    //         // double total_volume += vi[cluster_aux].getVolume();
-    //         // double totalX += vi[cluster_aux].getCenter().x() * vi[cluster_aux].getVolume();
-
-    //         // Calculate the sum of X
-    //         totalX += vi[cluster_aux].getCenter().x();
-
-    //         // Calculate the sum of Y
-    //         totalY += vi[cluster_aux].getCenter().y();
-
-    //         // Calculate the sum of Z
-    //         totalZ += vi[cluster_aux].getCenter().z();
-    //     }
-
-    //     // Calculate the average of X
-    //     double averageX = 0;
-    //     averageX = totalX / selected_cluster[m].size();
-
-    //     // Calculate the average of Y
-    //     double averageY = 0;
-    //     averageY = totalY / selected_cluster[m].size();
-
-    //     // Calculate the average of Z
-    //     double averageZ = 0;
-    //     averageZ = totalZ / selected_cluster[m].size();
-
-    //     // Compute the volume
-    //     //Assume all cells have the same volume
-    //     double cell_volume = vi[selected_cluster[m][0]].getVolume();
-    //     double cluster_volume = cell_volume * selected_cluster[m].size();
-
-    //     // Create the marker
-    //     visualization_msgs::Marker marker_volume;
-    //     marker_volume.header.frame_id = octree_frame_id ;
-    //     marker_volume.header.stamp = ros::Time();
-    //     marker_volume.ns = "volume";
-    //     marker_volume.id = id_ma_volume; //   ATENTION!!
-    //     marker_volume.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-    //     marker_volume.action = visualization_msgs::Marker::ADD;
-
-    //     marker_volume.pose.position.x = averageX;
-    //     marker_volume.pose.position.y = averageY;
-    //     marker_volume.pose.position.z = averageZ;
-
-    //     // double to string
-    //     std::ostringstream os;
-    //     char ss[1024];
-
-    //     sprintf(ss, "%0.6f", cluster_volume);
-    //     std::string str_volume = ss;
-
-    //     sprintf(ss, "%0.3f", averageX);
-    //     std::string str_averageX = ss;
-
-    //     sprintf(ss, "%0.3f", averageY);
-    //     std::string str_averageY = ss;
-
-    //     sprintf(ss, "%0.3f", averageZ);
-    //     std::string str_averageZ = ss;
-
-    //     // marker_volume.text = std::string("Volume: ") + str_volume + "\n";
-    //     marker_volume.text = std::string("X: ") + str_averageX + std::string(" Y: ") + str_averageY + std::string(" Z: ") + str_averageZ + "\n" + std::string("Volume: ") + str_volume;
-
-    //     marker_volume.scale.z = 0.05; // Size of Text
-    //     marker_volume.color.a = 1;
-    //     marker_volume.color.r = 1;
-    //     marker_volume.color.g = 1;
-    //     marker_volume.color.b = 1;
-
-    //     marker_volume.lifetime = ros::Duration(0.5);
-
-    //     ma_volumeText.markers.push_back(marker_volume);
-
-    //     id_ma_volume++;
-
-
-    // }
-
-
-
-
-
-    //Delete
-    //visualization_msgs::MarkerArray ma_deleteall;
-    //visualization_msgs::Marker marker;
-    //marker.header.stamp = ros::Time();
-    //marker.header.frame_id = octree_frame_id ;
-    //marker.ns = "clusters";
-    ////marker.action = visualization_msgs::Marker::DELETEALL;
-    //marker.action = 3;
-    //ma_deleteall.markers.push_back(marker);
-    //marker_pub_clusters->publish(ma_deleteall);
-
-    //ma_deleteall.markers[0].ns = "target_inconsistent";
-    //marker_pub_inconsistencies->publish(ma_deleteall);
-    //marker_pub_inconsistencies->publish(ma_deleteall);
-
-    //ros::Duration(0.05).sleep();
-
-    //marker_deleteall.ns = "target_inconsistent";
-    //ma_inconsistencies.markers.insert(ma_inconsistencies.markers.begin(), 0, marker_deleteall);
-    marker_pub_inconsistencies->publish(ma_inconsistencies);
-    marker_pub_clusters->publish(ma_clusters);
-
-    marker_pub->publish(ma);
-
-    marker_pub_center_of_mass->publish(ma_centerofmass);
-
-    marker_pub_volume->publish(ma_volumeText);
-
-    //publish colored point cloud
-    //double time_to_wait_for_point_cloud = 0.1;
-    //ros::Time t_point_cloud = ros::Time::now();
-    //ROS_INFO_STREAM("Waiting for a point_cloud2 on topic " << "/camera/depth_registered/points");
-    //sensor_msgs::PointCloud2::ConstPtr pcmsg = ros::topic::waitForMessage<sensor_msgs::PointCloud2>("/camera/depth_registered/points", *nh, ros::Duration(time_to_wait_for_point_cloud));
-    //ros::spinOnce();
-    if (!flg_received_point_cloud)
-    {
-        ROS_ERROR_STREAM("No point_cloud2 has been received yet");
-    }
-    else
-    {
-        ROS_INFO("Processing point cloud ...");
-        *pc = *pcin;
-        pcl_ros::transformPointCloud(octree_frame_id, *pc, *pc, *listener);
-        *pc2 = *pc;
-        pc2->points.erase(pc2->points.begin(), pc2->points.end());
-
-        for (size_t k = 0; k < selected_cluster.size(); ++k)
-        {
-            std::vector<size_t> lpoints;
-            for (size_t l = 0; l < selected_cluster[k].size(); ++l)
-            {
-                size_t idx = selected_cluster[k][l];
-                std::vector<size_t> ltmp;
-                ltmp = vi[idx].pointsInPointCloud(pc);
-                //ROS_ERROR("There are %ld points in cube %ld of cluster %ld", lpoints.size(),l, k);
-                lpoints.insert(lpoints.end(), ltmp.begin(), ltmp.end());
-            }
-
-            //ROS_ERROR("There are %ld points in cluster %ld", lpoints.size(), k);
-            //change color of points to cluster color
-            for (size_t i=0; i< lpoints.size(); ++i)
-            {
-                cv::Scalar c = cluster_colors.cv_color(k);
-                int8_t r = c[2], g = c[1], b = c[0];
-                //int8_t r = 255, g = 0, b = 0;    // Example: Red color
-                uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
-                //p.rgb = *reinterpret_cast<float*>(&rgb);
-                pc->points[lpoints[i]].rgb = *reinterpret_cast<float*>(&rgb);;
-                pc2->points.push_back(pc->points[lpoints[i]]);
-
-            }
-        }
-
-
-        pc2->is_dense = false;
-        pc2->width = pc2->points.size();
-        pc2->height = 1;
-        sensor_msgs::PointCloud2 pcmsgout;
-        pcl::toROSMsg(*pc2, pcmsgout);
-        pub_pointcloud->publish(pcmsgout);
-
-    }
-
-    ros::Duration d = (ros::Time::now() - t);
-    ROS_INFO("Comparisson took %f secs", d.toSec());
-
-}
-
-
-
 void compareCallback(const ros::TimerEvent&)
 {
     ros::Time t= ros::Time::now();
@@ -1752,6 +1383,226 @@ void compareCallback(const ros::TimerEvent&)
 
 }
 
+void compareCallbackUsingRegions(const ros::TimerEvent&)
+{
+// MODE 2: COMPARE WITH REGIONS
+// Compare a Octomap with Regions previously defined.
+
+    ros::Time t= ros::Time::now();
+
+    ROS_INFO("Compare callback using regions triggered");
+
+    // Checks if the OcTree Target was already received.
+    if (octree_target == NULL)
+    {
+        ROS_INFO("OcTree Target Not Found");
+        return;   
+    }
+
+    // Checks if the received target has changed, if not, exits the callback.
+    if (flg_received_new_target==true)
+    {
+        flg_received_new_target = false;
+    }
+    else
+    {
+        return;
+    }
+
+    // Visualization Message Marker Array Initialization
+    visualization_msgs::MarkerArray ma;
+    visualization_msgs::MarkerArray ma_inconsistencies;
+    visualization_msgs::MarkerArray ma_clusters;
+
+    visualization_msgs::Marker marker_deleteall;
+    marker_deleteall.header.stamp = ros::Time();
+    marker_deleteall.header.frame_id = octree_frame_id ;
+    marker_deleteall.ns = "target_inconsistent";
+    marker_deleteall.action = 3;
+
+    size_t id=0;
+    size_t id_inconsistencies=0;
+    size_t id_noneighbors=0;
+
+    // Color initialization
+    std_msgs::ColorRGBA color_occupied;
+    color_occupied.r = 0; color_occupied.g = 0; color_occupied.b = 0.5; color_occupied.a = .8;
+
+    std_msgs::ColorRGBA color_inconsistent;
+    color_inconsistent.r = .5; color_inconsistent.g = 0; color_inconsistent.b = 0; color_inconsistent.a = .4;
+    std_msgs::ColorRGBA color_inconsistent_missing;
+    color_inconsistent_missing.r = .0; color_inconsistent_missing.g = 0.5; color_inconsistent_missing.b = 0; color_inconsistent_missing.a = .4;
+
+    std_msgs::ColorRGBA color_target_volume;
+    color_target_volume.r = .5; color_target_volume.g = 0.5; color_target_volume.b = 0; color_target_volume.a = 1;
+
+    std_msgs::ColorRGBA color_noneighbors;
+    color_noneighbors.r = .5; color_noneighbors.g = 0; color_noneighbors.b = 1; color_noneighbors.a = .8;
+
+
+    // Vector of Inconsistencies Initialization
+    std::vector<ClassBoundingBox> vi;
+    std::vector<ClassBoundingBox> vi_missing;
+
+    // Creates the target volume message array
+    ma.markers.push_back(target_volume.getMarkerWithEdges("target_volume", octree_frame_id , color_target_volume, ++id));
+
+
+    ROS_INFO_STREAM("Starting Iteration");
+
+    // Iterates over each region
+    for (size_t i=0; i < boxes.size(); ++i)
+    {
+        size_t num_occupied = 0;
+        size_t num_neighbors = 0;
+
+        // Iterates over target Octree
+        for(OcTree::leaf_bbx_iterator it = octree_target->begin_leafs_bbx(boxes[i].getMinimumPoint(), boxes[i].getMaximumPoint(), depth), end=octree_target->end_leafs_bbx(); it!= end; ++it)
+        {
+            // Verifies if the node exists
+            if (octree_target->search(it.getKey())) 
+            {
+
+                num_neighbors++;
+
+                // Verifies if the node is free
+                if (!octree_target->isNodeOccupied(*it)) 
+                {
+                    // Do nothing
+                }
+                
+                else
+                {
+                    num_occupied++;
+                }
+            }
+        }
+
+            double occupation_ratio=0;
+            
+            // Occupation Ratio computation
+            if (num_neighbors !=0)
+            {
+                occupation_ratio = (double)num_occupied/(double)num_neighbors;
+            }
+
+            // Checks for Inconsistencies of type EXCEEDING
+            if (boxes[i].occupied == false && occupation_ratio >= exceeding_threshold_with_regions && num_neighbors !=0) 
+            {
+                // Add the inconsistency cell into a vector
+                vi.push_back(boxes[i]);
+            }
+
+            // Checks for Inconsistencies of type MISSING
+            if (boxes[i].occupied == true && occupation_ratio <= missing_threshold_with_regions && num_neighbors !=0) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
+                {
+                    // Add the inconsistency cell into a vector
+                    vi_missing.push_back(boxes[i]);
+                }
+    }
+
+
+    //Cluster the EXCEEDING cells
+    vector< vector<size_t> > cluster; 
+    clusterBoundingBoxes(vi, cluster);
+    ROS_INFO("There are %ld clusters", cluster.size());
+    class_colormap cluster_colors("autumn", cluster.size(), 0.8);
+
+    // Cluster the MISSING cells
+    vector< vector<size_t> > cluster_missing; 
+    clusterBoundingBoxes(vi_missing, cluster_missing);
+    ROS_INFO("There are %ld clusters_missing", cluster_missing.size());
+    class_colormap cluster_missing_colors("summer", cluster_missing.size(), 0.8);
+
+    //Select only EXCEEDING clusters above a given volume threshold
+    vector< vector<size_t> > selected_cluster; 
+    filterClustersByVolume(vi, cluster, selected_cluster, volume_threshold);
+    ROS_INFO("Selected %ld clusters using volume threshold", selected_cluster.size());
+
+    //Select only MISSING clusters above a given volume threshold
+    vector< vector<size_t> > selected_cluster_missing; 
+    filterClustersByVolume(vi_missing, cluster_missing, selected_cluster_missing, volume_threshold);
+    ROS_INFO("Selected %ld clusters_missing using volume threshold", selected_cluster_missing.size());
+
+    //Draw filtered inconsistencies clusters in RVIZ
+    class_colormap inconsistencies_colors(0.5,0,0,0.4);
+    clustersToMarkerArray(vi, selected_cluster, ma_inconsistencies, id_inconsistencies, octree_frame_id, "inconsistencies", inconsistencies_colors);
+    class_colormap inconsistencies_missing_colors(0,0.5,0,0.4);
+    clustersToMarkerArray(vi_missing, selected_cluster_missing, ma_inconsistencies, id_inconsistencies, octree_frame_id, "inconsistencies", inconsistencies_missing_colors);
+
+    // Draw all the clusters in RVIZ
+    size_t id_clusters=0;
+    clustersToMarkerArray(vi, selected_cluster, ma_clusters, id_clusters, octree_frame_id, "clusters", cluster_colors);
+    clustersToMarkerArray(vi_missing, selected_cluster_missing, ma_clusters, id_clusters, octree_frame_id, "clusters", cluster_missing_colors);
+
+    // Draw the Center of Mass Sphere and Volume Information
+    visualization_msgs::MarkerArray ma_centerofmass;
+    visualization_msgs::MarkerArray ma_volumeText;
+    size_t id_ma_centerofmass = 0;
+    centerOfMass(vi, selected_cluster, ma_centerofmass, ma_volumeText, id_ma_centerofmass, octree_frame_id);
+    centerOfMass(vi_missing, selected_cluster_missing, ma_centerofmass, ma_volumeText, id_ma_centerofmass, octree_frame_id);
+
+    // Publish the Marker Arrays
+    marker_pub_inconsistencies->publish(ma_inconsistencies);
+    marker_pub_clusters->publish(ma_clusters);
+    marker_pub->publish(ma);
+    marker_pub_center_of_mass->publish(ma_centerofmass);
+    marker_pub_volume->publish(ma_volumeText);
+
+
+    // Paint the Point Cloud (if available) with the Inconsistencies information.
+    if (!flg_received_point_cloud)
+    {
+        ROS_ERROR_STREAM("No point_cloud2 has been received yet");
+    }
+    else
+    {
+        ROS_INFO("Processing point cloud ...");
+
+        *pc = *pcin;
+        
+        pcl_ros::transformPointCloud(octree_frame_id, *pc, *pc, *listener);
+        
+        *pc2 = *pc;
+        
+        pc2->points.erase(pc2->points.begin(), pc2->points.end());
+
+        for (size_t k = 0; k < selected_cluster.size(); ++k)
+        {
+            std::vector<size_t> lpoints;
+            for (size_t l = 0; l < selected_cluster[k].size(); ++l)
+            {
+                size_t idx = selected_cluster[k][l];
+                std::vector<size_t> ltmp;
+                ltmp = vi[idx].pointsInPointCloud(pc);
+
+                lpoints.insert(lpoints.end(), ltmp.begin(), ltmp.end());
+            }
+
+            // Change color of points to cluster color
+            for (size_t i=0; i< lpoints.size(); ++i)
+            {
+                cv::Scalar c = cluster_colors.cv_color(k);
+                int8_t r = c[2], g = c[1], b = c[0];
+                uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
+                pc->points[lpoints[i]].rgb = *reinterpret_cast<float*>(&rgb);;
+                pc2->points.push_back(pc->points[lpoints[i]]);
+
+            }
+        }
+
+        pc2->is_dense = false;
+        pc2->width = pc2->points.size();
+        pc2->height = 1;
+        sensor_msgs::PointCloud2 pcmsgout;
+        pcl::toROSMsg(*pc2, pcmsgout);
+        pub_pointcloud->publish(pcmsgout);
+
+    }
+
+    ros::Duration d = (ros::Time::now() - t);
+    ROS_INFO("Comparisson took %f secs", d.toSec());
+}
 
 void callbackDynamicReconfigure(world_model_consistency_check::DepthConfigurationConfig &config, uint32_t level) 
 {
