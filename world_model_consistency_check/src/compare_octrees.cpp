@@ -362,11 +362,9 @@ double missing_threshold = 0.5;
 double exceeding_threshold_with_regions = 0.1;
 double missing_threshold_with_regions = 0.9;
 
-
 //Declare a ClassBoundingBox which defines the target_volume
-//ClassBoundingBox target_volume(-0.42, 0.42, -0.42, 0.42, 0.2, 3.0);
-//ClassBoundingBox target_volume(0.6, 1.4, -.7, .7, 0.6, 2.0);
 ClassBoundingBox target_volume(0.4, 2.0, -1.0, 1., 0.3, 2.2);
+
 std::string octree_frame_id = "world";
 bool flg_received_new_target = false;
 bool flg_received_point_cloud = false;
@@ -381,28 +379,40 @@ std::vector<ClassBoundingBox> boxes;
 
 void load_regions(void)
 {
+// Callback to load previously saved regions.
+
+    // Retrieves the vector of center positions of regions from topic.
     std::vector<double> center_x;
     std::vector<double> center_y;
     std::vector<double> center_z;
-    std::vector<double> size_x;
-    std::vector<double> size_y;
-    std::vector<double> size_z;
-    std::vector<bool> is_occupied;
-    std::string frame_id = "map";
-
     ros::param::get("/interactive_region_definition/center_x", center_x);
     ros::param::get("/interactive_region_definition/center_y", center_y);
     ros::param::get("/interactive_region_definition/center_z", center_z);
+
+    // Retrieves the vector of sizes of regions from topic.
+    std::vector<double> size_x;
+    std::vector<double> size_y;
+    std::vector<double> size_z;
     ros::param::get("/interactive_region_definition/size_x", size_x);
     ros::param::get("/interactive_region_definition/size_y", size_y);
     ros::param::get("/interactive_region_definition/size_z", size_z);
+
+    // Retrieves the vector of occupation information from topic.
+    std::vector<bool> is_occupied;
     ros::param::get("/interactive_region_definition/is_occupied", is_occupied);
+
+    // Sets the defauld frame_id and gets the frame_id from topic.
+    std::string frame_id = "map";
     ros::param::get("/interactive_region_definition/frame_id", frame_id);
 
     ROS_INFO("There are %ld loaded boxes", center_x.size());
 
+    // Erase previoysly stored boxes vector.
     boxes.erase(boxes.begin(), boxes.end());
+
     ROS_INFO("There are %ld boxes in memory", boxes.size());
+    
+    // Iterates over each region retrieved and stores its information on a vector.
     for (size_t i=0; i< center_x.size(); ++i)
     {
         ClassBoundingBox b(center_x[i] - size_x[i]/2, center_x[i] + size_x[i]/2, center_y[i] - size_y[i]/2, center_y[i] + size_y[i]/2, center_z[i] - size_z[i]/2, center_z[i] + size_z[i]/2);
@@ -411,8 +421,6 @@ void load_regions(void)
     }
 
     ROS_INFO("Now there are %ld boxes in memory", boxes.size());
-
-
 }
 
 
