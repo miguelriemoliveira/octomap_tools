@@ -423,12 +423,11 @@ void load_regions(void)
     ROS_INFO("Now there are %ld boxes in memory", boxes.size());
 }
 
-
-
 void octomapCallbackModel(const octomap_msgs::Octomap::ConstPtr& msg)
 {
-    //return;
-    //ROS_INFO("Received new octree model on topic %s with id: %s, frame_id: %s\n", topic_model.c_str(), msg->id.c_str(), msg->header.frame_id.c_str());
+// Callback responsible for retrieving the Model Octomap from a topic and storing it in a variable.
+
+    // Memory Leak fix
     if (model_tree != NULL)
     {
         delete(model_tree);
@@ -440,8 +439,9 @@ void octomapCallbackModel(const octomap_msgs::Octomap::ConstPtr& msg)
 
 void octomapCallbackTarget(const octomap_msgs::Octomap::ConstPtr& msg)
 {
+// Callback responsible for retrieving the Target Octomap from a topic and storing it in a variable.
 
-    //ROS_INFO("Received new octree target on topic %s with id: %s, frame_id: %s\n", topic_target.c_str(), msg->id.c_str(), msg->header.frame_id.c_str());
+    // Memory Leak fix
     if (target_tree != NULL)
     {
         delete(target_tree);
@@ -449,7 +449,6 @@ void octomapCallbackTarget(const octomap_msgs::Octomap::ConstPtr& msg)
 
     target_tree = msgToMap(*msg);
     octree_target = dynamic_cast<OcTree*>(target_tree);
-    //free(target_tree);
 
     if (msg->header.frame_id != "")
         octree_frame_id = msg->header.frame_id;
