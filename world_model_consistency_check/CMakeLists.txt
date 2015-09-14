@@ -151,6 +151,9 @@ target_link_libraries (accumulatepointcloud2file ${PCL_LIBRARIES} ${catkin_LIBRA
 add_executable(pcd2pointcloud src/pcd2pointcloud.cpp)
 target_link_libraries (pcd2pointcloud ${PCL_LIBRARIES} ${catkin_LIBRARIES})
 
+add_executable(ply2pcd src/ply2pcd.cpp)
+target_link_libraries (ply2pcd ${PCL_LIBRARIES} ${catkin_LIBRARIES})
+
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(world_model_consistency_check_node world_model_consistency_check_generate_messages_cpp)

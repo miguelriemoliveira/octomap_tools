@@ -1,14 +1,10 @@
-//#include <iostream>
-//#include <boost/thread/thread.hpp>
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <ros/package.h>
-//#include <rospack/rospack.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <octomap_msgs/Octomap.h>
 #include <octomap_msgs/conversions.h>
 #include <octomap/AbstractOcTree.h>
-//#include <octomap/OcTree.h>
 
 #include <pcl/point_types.h>
 #include <pcl_ros/point_cloud.h>
@@ -23,7 +19,7 @@
 #include <pcl/point_types.h>
 #include <tf/transform_listener.h>
 
-//My includes
+// My includes
 #include <world_model_consistency_check/bounding_box.h>
 
 #define PFLN printf("LINE %d FILE %s\n",__LINE__, __FILE__);
@@ -38,6 +34,8 @@ using namespace sensor_msgs;
   |                                 |
   |       FUNCTION PROTOTYPES       |
   |_________________________________| */
+
+
 bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2);
 
 
@@ -50,11 +48,11 @@ bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2);
 
 void centerOfMass(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluster, visualization_msgs::MarkerArray& ma, visualization_msgs::MarkerArray& ma_volumeText, size_t &id, string frame_id)
 {
+// Function to compute the Center of Mass of a Cluster.
 
-
+    // For each Cluster
     for (size_t m = 0; m < cluster.size(); ++m)
     {
-
         double cluster_volume = 0;
         double totalX = 0;
         double totalY = 0;
@@ -62,6 +60,7 @@ void centerOfMass(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluste
 
         double cell_volume = 0;
 
+        // Iterate each cell inside a given Cluster
         for (size_t n = 0; n < cluster[m].size(); ++n)
         {
 
@@ -94,6 +93,7 @@ void centerOfMass(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluste
 
         ROS_INFO("Averages for Cluster [%ld]: X: %f, Y: %f, Z: %f", m, averageX, averageY, averageZ);
 
+        // Marker Array of Center of Mass
         visualization_msgs::Marker marker;
         marker.header.frame_id = frame_id ;
         marker.header.stamp = ros::Time();
@@ -123,9 +123,12 @@ void centerOfMass(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluste
 
         ma.markers.push_back(marker);
 
+
+        // Cluster Volume is the sum of each cell
         cluster_volume += cell_volume;
 
-        // Create the marker
+
+        // Marker Array for Volume 
         visualization_msgs::Marker marker_volume;
         marker_volume.header.frame_id = frame_id ;
         marker_volume.header.stamp = ros::Time();
@@ -138,7 +141,7 @@ void centerOfMass(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluste
         marker_volume.pose.position.y = averageY;
         marker_volume.pose.position.z = averageZ;
 
-        // double to string
+        // Convertion double to string
         std::ostringstream os;
         char ss[1024];
 
@@ -154,7 +157,6 @@ void centerOfMass(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluste
         sprintf(ss, "%0.2f", averageZ);
         std::string str_averageZ = ss;
 
-        // marker_volume.text = std::string("Volume: ") + str_volume + "\n";
         marker_volume.text = std::string("X: ") + str_averageX + std::string(" Y: ") + str_averageY + std::string(" Z: ") + str_averageZ + "\n" + std::string("Volume: ") + str_volume + std::string("m^3");
 
         marker_volume.scale.z = 0.2; // Size of Text
