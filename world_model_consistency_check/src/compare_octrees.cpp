@@ -177,38 +177,45 @@ void centerOfMass(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluste
 
 void clustersToMarkerArray(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluster, visualization_msgs::MarkerArray& ma, size_t& id, string frame_id, string ns, class_colormap& cluster_colors)
 {
+// Function to create Marker Array to graphically represent a given Cluster.
 
     // Iterates once per cluster
     for (size_t k = 0; k < cluster.size(); ++k)
     {
-        // Iterates once per point of the cluster
+        // Iterates once per cell of the cluster
         for (size_t l = 0; l < cluster[k].size(); ++l)
         {
             size_t cluster_aux = cluster[k][l];
             ma.markers.push_back(vi[cluster_aux].getMarkerCubeVolume(ns, frame_id, cluster_colors.color(k), ++id));
         }
     }
-
 }
 
 void filterClustersByVolume(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluster, vector< vector<size_t> >& selected_cluster, double volume_threshold)
 {
+// Function to filter Clusters by a given Volume Threshold.
 
+    // Iterates once per Cluster
     for (size_t k = 0; k < cluster.size(); ++k)
     {
         //Assume all cells have the same volume
         double cell_volume = ((ClassBoundingBox) vi[cluster[k][0]]).getVolume();
+
+        // Cluster Volume calculation
         double cluster_volume = cell_volume * cluster[k].size();
 
+        // Filtering by a given Volume Threshold
         if (cluster_volume > volume_threshold)
         {
             vector<size_t> tmp;
-            // Iterates once per point of the cluster
+
+            // Iterates once per cell of the Cluster
             for (size_t l = 0; l < cluster[k].size(); ++l)
             {
-                //size_t cluster_aux = cluster[k][l];
                 tmp.push_back(cluster[k][l]);
             }
+
+            // Stores the Filtered Clusters
             selected_cluster.push_back(tmp);
         }
     }
