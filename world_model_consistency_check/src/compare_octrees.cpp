@@ -39,7 +39,6 @@ using namespace sensor_msgs;
 bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2);
 
 
-
 /* _________________________________
   |                                 |
   |      FUNCTION DEFINITIONS       |
@@ -174,7 +173,6 @@ void centerOfMass(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluste
     }
 }
 
-
 void clustersToMarkerArray(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluster, visualization_msgs::MarkerArray& ma, size_t& id, string frame_id, string ns, class_colormap& cluster_colors)
 {
 // Function to create Marker Array to graphically represent a given Cluster.
@@ -221,7 +219,6 @@ void filterClustersByVolume(vector<ClassBoundingBox>& vi, vector< vector<size_t>
     }
 }
 
-
 void clusterBoundingBoxes(vector<ClassBoundingBox>& vi, vector< vector<size_t> >& cluster)
 {
 // Function to create Clusters by a flood fill algorithm.
@@ -252,7 +249,7 @@ void clusterBoundingBoxes(vector<ClassBoundingBox>& vi, vector< vector<size_t> >
 
             size_t idx_b1 = flood[0];
 
-            // Iterates over every still on the queue
+            // Iterates over every cell still on the queue
             for (size_t j=0; j < queue.size(); ++j) 
             {
                 size_t idx_b2 = queue[j]; 
@@ -278,7 +275,6 @@ void clusterBoundingBoxes(vector<ClassBoundingBox>& vi, vector< vector<size_t> >
         }
     }
 }
-
 
 bool are_neighbors(ClassBoundingBox b1, ClassBoundingBox b2)
 {
@@ -466,6 +462,9 @@ void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 
 void compareCallback(const ros::TimerEvent&)
 {
+// MODE 1: COMPARE TWO OCTOMAPS
+// Compare two OctoMaps retrieved by topics and check for inconsistencies.
+
     ros::Time t= ros::Time::now();
 
     ROS_INFO("Compare callback triggered");
@@ -484,6 +483,7 @@ void compareCallback(const ros::TimerEvent&)
         return;   
     }
 
+    // Checks if the received target has changed, if not, exits the callback.
     if (flg_received_new_target==true)
     {
         flg_received_new_target = false;
@@ -492,7 +492,8 @@ void compareCallback(const ros::TimerEvent&)
     {
         return;
     }
-    // Visualization Message Marker Array
+
+    // Visualization Message Marker Array Initialization
     visualization_msgs::MarkerArray ma;
     visualization_msgs::MarkerArray ma_inconsistencies;
     visualization_msgs::MarkerArray ma_clusters;
@@ -517,7 +518,6 @@ void compareCallback(const ros::TimerEvent&)
     std_msgs::ColorRGBA color_inconsistent_missing;
     color_inconsistent_missing.r = .0; color_inconsistent_missing.g = 0.5; color_inconsistent_missing.b = 0; color_inconsistent_missing.a = .8;
 
-
     std_msgs::ColorRGBA color_target_volume;
     color_target_volume.r = .5; color_target_volume.g = 0.5; color_target_volume.b = 0; color_target_volume.a = 1;
 
@@ -535,57 +535,53 @@ void compareCallback(const ros::TimerEvent&)
 
     ROS_INFO_STREAM("Starting Iteration");
 
-    // -------------------------------------------------------------
-    // ----------- Iterate over target octree ----------------------
-    // -------------------------------------------------------------
+    // Iterates over TARGET Octree
     for(OcTree::leaf_bbx_iterator it = octree_target->begin_leafs_bbx(target_volume.getMinimumPoint(), target_volume.getMaximumPoint(), depth), end=octree_target->end_leafs_bbx(); it!= end; ++it)
     {
-        if (octree_target->search(it.getKey())) // Verifies if the node exists
+        // Verifies if the cell exists
+        if (octree_target->search(it.getKey())) 
         {
+            // Verifies if the cell is occupied
             if (octree_target->isNodeOccupied(*it)) 
             {
                 ClassBoundingBox target_cell(it.getX(), it.getY(), it.getZ(), it.getSize());
-                //bool flg_found_at_least_one_occupied = false;
-                //bool flg_found_neighbors = false;
-                //int count =0;
+                
                 size_t num_occupied = 0;
                 size_t num_neighbors = 0;
 
                 ma.markers.push_back(target_cell.getMarkerWithEdges("target_occupied", octree_frame_id , color_occupied, ++id));
 
-                // -------------------------------------------------------------
-                // ----------- Iterate over model octree ----------------------
-                // -------------------------------------------------------------
+                // Iterates over MODEL Octree             
                 for(OcTree::leaf_bbx_iterator it_model = octree_model->begin_leafs_bbx(target_cell.getMinimumPoint(),target_cell.getMaximumPoint(), depth), end=octree_model->end_leafs_bbx(); it_model!= end; ++it_model)
                 {
-                    if (octree_model->search(it_model.getKey())) // Verifies if the nodes exists
+                    // Verifies if the cell exists
+                    if (octree_model->search(it_model.getKey())) 
                     {
                         num_neighbors++;
-                        //flg_found_neighbors = true;
 
-                        if (!octree_model->isNodeOccupied(*it_model)) // Verifies if the node is free
+                        // Verifies if the cell is FREE
+                        if (!octree_model->isNodeOccupied(*it_model)) 
                         {
-                            //Do something here - Draw node, etc
+                            // Do Nothing
                         }
                         else
                         {
                             num_occupied++;
-                            //flg_found_at_least_one_occupied = true;
                         }
                     }
                 }
 
+                // Occupation Ratio computation
                 double occupation_ratio=0;
                 if (num_neighbors !=0)
                 {
                     occupation_ratio = (double)num_occupied/(double)num_neighbors;
                 }
 
-
-                if (occupation_ratio <= exceeding_threshold && num_neighbors !=0) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
-                //if (occupation_ratio >= exceeding_threshold && num_neighbors !=0) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
+                // Checks for Inconsistencies of type EXCEEDING
+                // If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
+                if (occupation_ratio <= exceeding_threshold && num_neighbors !=0) 
                 {
-                    //Inconsistencies of type exceeding 
                     // Add the inconsistency cell into a vector
                     vi.push_back(target_cell);
 
@@ -597,57 +593,53 @@ void compareCallback(const ros::TimerEvent&)
 
 
 
-    // -------------------------------------------------------------
-    // ----------- Iterate over model octree ----------------------
-    // -------------------------------------------------------------
+    // Iterates over MODEL Octree
     for(OcTree::leaf_bbx_iterator it = octree_model->begin_leafs_bbx(target_volume.getMinimumPoint(), target_volume.getMaximumPoint(), depth), end=octree_model->end_leafs_bbx(); it!= end; ++it)
     {
-        if (octree_model->search(it.getKey())) // Verifies if the node exists
+        // Verifies if the cell exists
+        if (octree_model->search(it.getKey())) 
         {
+            // Verifies if cell is Occupied
             if (octree_model->isNodeOccupied(*it))
             {
                 ClassBoundingBox model_cell(it.getX(), it.getY(), it.getZ(), it.getSize());
-                //bool flg_found_at_least_one_occupied = false;
-                //bool flg_found_neighbors = false;
-                //int count =0;
+
                 size_t num_occupied = 0;
                 size_t num_neighbors = 0;
 
                 ma.markers.push_back(model_cell.getMarkerWithEdges("model_occupied", octree_frame_id , color_occupied, ++id));
 
-                // -------------------------------------------------------------
-                // ----------- Iterate over model octree ----------------------
-                // -------------------------------------------------------------
+                // Iterates over TARGET Octree
                 for(OcTree::leaf_bbx_iterator it_target = octree_target->begin_leafs_bbx(model_cell.getMinimumPoint(),model_cell.getMaximumPoint(), depth), end=octree_target->end_leafs_bbx(); it_target!= end; ++it_target)
                 {
-                    if (octree_target->search(it_target.getKey())) // Verifies if the nodes exists
+                    // Verifies if cell exists
+                    if (octree_target->search(it_target.getKey())) 
                     {
                         num_neighbors++;
-                        //flg_found_neighbors = true;
 
-                        if (!octree_target->isNodeOccupied(*it_target)) // Verifies if the node is free
+                        // Verifies if cell is FREE
+                        if (!octree_target->isNodeOccupied(*it_target)) 
                         {
-                            //Do something here - Draw node, etc
+                            // Do nothing
                         }
                         else
                         {
                             num_occupied++;
-                            //flg_found_at_least_one_occupied = true;
                         }
                     }
                 }
 
+                // Occupation Ratio computation
                 double occupation_ratio=0;
                 if (num_neighbors !=0)
                 {
                     occupation_ratio = (double)num_occupied/(double)num_neighbors;
                 }
 
-
-                //if (octree_target->isNodeOccupied(*it) && flg_found_at_least_one_occupied == false && flg_found_neighbors == true) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
-                if (occupation_ratio <= missing_threshold && num_neighbors !=0) //If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
+                // Checks for Inconsistencies of type EXCEEDING
+                // If no occupied cell was found out of all iterated in the model's bbox, then an inconsistency is detected
+                if (occupation_ratio <= missing_threshold && num_neighbors !=0) 
                 {
-                    //Inconsistencies of type exceeding 
                     // Add the inconsistency cell into a vector
                     vi_missing.push_back(model_cell);
 
@@ -661,8 +653,9 @@ void compareCallback(const ros::TimerEvent&)
 
     /* _________________________________
        |                                 |
-       |     for the exceeding clusters  |
+       |     for the EXCEEDING clusters  |
        |_________________________________| */
+
 
     //Build the queue
     vector<size_t> queue;
@@ -670,12 +663,6 @@ void compareCallback(const ros::TimerEvent&)
     {
         queue.push_back(i);
     }
-
-    // //Print the queue list
-    // for (size_t i=0; i != queue.size(); ++i)
-    // {
-    //     ROS_INFO("queue[%ld]=%ld", i, queue[i]);
-    // }
 
     vector< vector<size_t> > cluster; 
 
@@ -685,68 +672,43 @@ void compareCallback(const ros::TimerEvent&)
         size_t seed = queue[0]; 
         queue.erase(queue.begin() + 0); //remove first element
 
-        // ROS_INFO("Selected seed point %ld, queue has size=%ld", seed, queue.size());
-
         //Create new cluster
         vector<size_t> tmp;
         cluster.push_back(tmp);
-
-        //ROS_INFO("Created cluster %ld ", cluster.size());
 
         //Expand seed
         vector <size_t> flood;
         flood.push_back(seed);
 
-
         while (flood.size() != 0)
         {
 
-            //ROS_INFO("Expanding first elem of flood (size %ld) idx = %ld", flood.size(), flood[0]);
-            //expand flood[j]
             size_t idx_b1 = flood[0];
 
-
-            //ROS_INFO("Checking of queue size %ld", queue.size());
+            // Iterates over every cell still on the queue
             for (size_t j=0; j < queue.size(); ++j) 
             {
                 size_t idx_b2 = queue[j]; 
 
-                //ROS_INFO("Checking idx_b1 %ld idx_b2 %ld", idx_b1, idx_b2);
-
-
-                //char name[50];
-                //cout << "press a key to continue";
-                //cin >> name;
-
+                // Check if elements are neighbors
                 if (are_neighbors(vi[idx_b1], vi[idx_b2]))
                 {
-                    //ROS_INFO("Found neighbor idx %ld", idx_b2);
                     flood.push_back(idx_b2);
                     queue.erase(queue.begin() + j);
-                    //TODO should be b2 or b1?
 
                 }
                 else
                 {
-                    //nothing to do 
+                    // Do nothing
                 }
             }
 
-
-
-            //add first elem of floodto cluster
+            // Add first element of Flood to Cluster
             cluster.at(cluster.size()-1).push_back(flood[0]); //add seed point to cluster
 
-            //remove first elem of  flood
+            // Remove first element of Flood to Cluster
             flood.erase(flood.begin() + 0);
-
         }
-
-
-        //ROS_INFO("Created cluster %ld with %ld points", cluster.size(), cluster[cluster.size()-1].size());
-
-
-
     }
 
 
@@ -754,6 +716,7 @@ void compareCallback(const ros::TimerEvent&)
        |                                 |
        |     for the missing clusters    |
        |_________________________________| */
+
 
     //Build the queue
     vector<size_t> queue_missing;
@@ -770,190 +733,87 @@ void compareCallback(const ros::TimerEvent&)
         size_t seed = queue_missing[0]; 
         queue_missing.erase(queue_missing.begin() + 0); //remove first element
 
-        // ROS_INFO("Selected seed point %ld, queue has size=%ld", seed, queue.size());
-
         //Create new cluster
         vector<size_t> tmp;
         cluster_missing.push_back(tmp);
-
-        // ROS_INFO("Created cluster_missing %ld ", cluster_missing.size());
 
         //Expand seed
         vector <size_t> flood;
         flood.push_back(seed);
 
-
         while (flood.size() != 0)
         {
-
-            //ROS_INFO("Expanding first elem of flood (size %ld) idx = %ld", flood.size(), flood[0]);
-            //expand flood[j]
             size_t idx_b1 = flood[0];
 
-
-            //ROS_INFO("Checking of queue size %ld", queue.size());
+            // Iterates over every cell still on the queue
             for (size_t j=0; j < queue_missing.size(); ++j) 
             {
                 size_t idx_b2 = queue_missing[j]; 
 
-                //ROS_INFO("Checking idx_b1 %ld idx_b2 %ld", idx_b1, idx_b2);
-
-
-                //char name[50];
-                //cout << "press a key to continue";
-                //cin >> name;
-
+                // Check if elements are neighbors
                 if (are_neighbors(vi_missing[idx_b1], vi_missing[idx_b2]))
                 {
-                    //ROS_INFO("Found neighbor idx %ld", idx_b2);
                     flood.push_back(idx_b2);
                     queue_missing.erase(queue_missing.begin() + j);
-                    //TODO should be b2 or b1?
-
                 }
                 else
                 {
-                    //nothing to do 
+                    // do nothing
                 }
             }
 
-
-
-            //add first elem of floodto cluster
+            // Add first element of Flood to Cluster
             cluster_missing.at(cluster_missing.size()-1).push_back(flood[0]); //add seed point to cluster
 
-            //remove first elem of  flood
+            // Remove first element of Flood
             flood.erase(flood.begin() + 0);
-
         }
-
-
-        //ROS_INFO("Created cluster_missing %ld with %ld points", cluster_missing.size(), cluster_missing[cluster_missing.size()-1].size());
-
-
-
     }
 
     //Information about clusters
-
     ROS_INFO("There are %ld clusters", cluster.size());
-
     ROS_INFO("There are %ld clusters_missing", cluster_missing.size());
-
-    // ROS_INFO("Number of clusters found %ld", cluster.size());
-    // for (size_t i=0; i < cluster.size(); ++i)
-    // {
-    //     ROS_INFO("Cluster %ld has the following points:", i);
-
-    //     for (size_t j=0; j < cluster[i].size(); ++j)
-    //     {
-    //         cout << cluster[i][j] << ", "; 
-
-    //     }
-
-    //     cout << endl; 
-    // }
-
-
-    // ----------------------------------------------------
-    // --------- Euclidean Cluster Extraction (RAFAEL) _---
-    // ----------------------------------------------------
-
-
-    // Create empty list of clusters
-    // std::vector<std::vector<ClassBoundingBox *>> v_v_cluster;
-    //std::vector< std::vector<ClassBoundingBox> > v_v_cluster; 
-
-    //// Create queue of cells that need to be checked
-    //std::vector<ClassBoundingBox> v_toCheck;
-
-
-    //// For every cell in the dataset that is not part of a cluster already, 
-    //// add the cell to the queue of cells that need to be checked.
-
-    //// Initializes the Iterator to the dataset
-    //for (std::vector<ClassBoundingBox>::iterator i = vi.begin(); i != vi.end(); i++)
-    //{
-    //// Tests if the cell is already part of a cluster.
-    //if (true)
-    //{
-    //// If it is, jumps out of the cycle, because the cell is already in a cluster.
-    //}
-
-    //else
-    //{
-    //// Adds the cell to the vector of cells that need to be checked.
-    //v_toCheck.push_back((*i));
-
-    //// For every cell in the queue of cells that need to be checked:
-    //for (std::vector<ClassBoundingBox>::iterator iq = v_toCheck.begin(); iq != v_toCheck.end(); iq++)
-    //{
-    //// Serch for cells in the Neighbourhood
-    //// If there are cells in the Neighbourhood,
-    //// Test if the are already not part of the queue of points that needs to be checked.
-
-    //// if( std::find(v_toCheck.begin(), v_toCheck.end(), (*iq) ) != v_toCheck.end() ) 
-    //// {
-    ////     // v contains x 
-    //// } 
-
-    //// else 
-    //// {
-    ////     // v does not contain x
-    //// }
-
-
-    //// If they are not,  add then to the list of points that needs to be checked.
-
-    //}
-
-    //// When every point of the "to check" dataset is checked, add then to the cluster list and clean it.
-    //// Draw the data cells to be visualized
-
-    //}
-    //}
-
-
-
-
-
-    //ROS_INFO("Inconsistencies vector has %ld cells", vi.size());
 
 
     /* ______________________________________
        |                                      |
        |    Exceeding Clusters                |
        |________________________________      | */
-    //Filter clusters using volume threshold |
+
+    //Filter clusters using volume threshold
 
     vector< vector<size_t> > selected_cluster; 
 
+    // Iterates once per Cluster
     for (size_t k = 0; k < cluster.size(); ++k)
     {
         //Assume all cells have the same volume
         double cell_volume = vi[cluster[k][0]].getVolume();
+        
+        // Cluster Volume calculation
         double cluster_volume = cell_volume * cluster[k].size();
 
+        // Filtering by a given Volume Threshold
         if (cluster_volume > volume_threshold)
         {
             vector<size_t> tmp;
+
             // Iterates once per point of the cluster
             for (size_t l = 0; l < cluster[k].size(); ++l)
             {
                 size_t cluster_aux = cluster[k][l];
                 tmp.push_back(cluster[k][l]);
             }
+
+            // Stores the Filtered Cluster
             selected_cluster.push_back(tmp);
         }
     }
-    ROS_INFO("Selected %ld clusters suing volume threshold", selected_cluster.size());
 
 
     class_colormap cluster_colors("autumn", selected_cluster.size(), 0.8);
 
-    // ----------------------------------------------------
-    // --------- Draws clusters on visualizer -------------
-
+    // Draws cluster on visualizer
     // Iterates once per cluster
     for (size_t k = 0; k < selected_cluster.size(); ++k)
     {
@@ -970,35 +830,40 @@ void compareCallback(const ros::TimerEvent&)
        | 
        |    Missing Clusters                  |
        |________________________________      | */
+
     //Filter clusters using volume threshold |
+
     vector< vector<size_t> > selected_cluster_missing; 
 
+    // Iterates once per Cluster
     for (size_t k = 0; k < cluster_missing.size(); ++k)
     {
         //Assume all cells have the same volume
         double cell_volume = vi_missing[cluster_missing[k][0]].getVolume();
+        
+        // Cluster Volume calculation
         double cluster_volume = cell_volume * cluster_missing[k].size();
 
+        // Filtering by a given Volume Threshold
         if (cluster_volume > volume_threshold)
         {
             vector<size_t> tmp;
+
             // Iterates once per point of the cluster
             for (size_t l = 0; l < cluster_missing[k].size(); ++l)
             {
                 size_t cluster_aux = cluster_missing[k][l];
                 tmp.push_back(cluster_missing[k][l]);
             }
+
+            // Stores the Filtered Clusters
             selected_cluster_missing.push_back(tmp);
         }
     }
-    //ROS_INFO("Selected %ld clusters_missing using volume threshold", selected_cluster_missing.size());
 
     class_colormap cluster_missing_colors("winter", selected_cluster_missing.size(), 0.8, true);
 
-
-    // ----------------------------------------------------
-    // --------- Draws clusters on visualizer -------------
-
+    // Draws cluster on visualizer
     // Iterates once per cluster
     for (size_t k = 0; k < selected_cluster_missing.size(); ++k)
     {
@@ -1019,15 +884,13 @@ void compareCallback(const ros::TimerEvent&)
        |    Exceeding Clusters                |
        |________________________________      | */
 
-    // ----------------------------------------------------
-    // ----------- Center of Mass of Clusters -------------
-    // ----------------------------------------------------
+    // Center of Mass of Clusters
 
     // Visualization Message Marker Array for the center of mass
     visualization_msgs::MarkerArray ma_centerofmass;
     int id_ma_centerofmass = 0;
 
-
+    // For each Cluster
     for (size_t m = 0; m < selected_cluster.size(); ++m)
     {
 
@@ -1035,13 +898,11 @@ void compareCallback(const ros::TimerEvent&)
         double totalY = 0;
         double totalZ = 0;
 
+        // Iterate each cell inside a given Cluster
         for (size_t n = 0; n < selected_cluster[m].size(); ++n)
         {
 
             size_t cluster_aux = selected_cluster[m][n];
-
-            // double total_volume += vi[cluster_aux].getVolume();
-            // double totalX += vi[cluster_aux].getCenter().x() * vi[cluster_aux].getVolume();
 
             // Calculate the sum of X
             totalX += vi[cluster_aux].getCenter().x();
@@ -1097,26 +958,16 @@ void compareCallback(const ros::TimerEvent&)
         ma_centerofmass.markers.push_back(marker);
 
         id_ma_centerofmass++;
-
-
-
-
     }
 
 
-    /* ______________________________________
-       |                                      |
-       |    Exceeding Clusters                |
-       |________________________________      | */
-
-    // ----------------------------------------------------
-    // ----------- Print Volume of Clusters ---------------
-    // ----------------------------------------------------
-
+    // Print Volume of Clusters
+    
     // Visualization Message Marker Array for the center of mass
     visualization_msgs::MarkerArray ma_volumeText;
     int id_ma_volume = 0;
 
+    // For each Cluster
     for (size_t m = 0; m < selected_cluster.size(); ++m)
     {
 
@@ -1124,13 +975,11 @@ void compareCallback(const ros::TimerEvent&)
         double totalY = 0;
         double totalZ = 0;
 
+        // Iterates each cell inside a given Cluster
         for (size_t n = 0; n < selected_cluster[m].size(); ++n)
         {
 
             size_t cluster_aux = selected_cluster[m][n];
-
-            // double total_volume += vi[cluster_aux].getVolume();
-            // double totalX += vi[cluster_aux].getCenter().x() * vi[cluster_aux].getVolume();
 
             // Calculate the sum of X
             totalX += vi[cluster_aux].getCenter().x();
@@ -1155,7 +1004,7 @@ void compareCallback(const ros::TimerEvent&)
         averageZ = totalZ / selected_cluster[m].size();
 
         // Compute the volume
-        //Assume all cells have the same volume
+        // Assume all cells have the same volume
         double cell_volume = vi[selected_cluster[m][0]].getVolume();
         double cluster_volume = cell_volume * selected_cluster[m].size();
 
@@ -1172,7 +1021,7 @@ void compareCallback(const ros::TimerEvent&)
         marker_volume.pose.position.y = averageY;
         marker_volume.pose.position.z = averageZ;
 
-        // double to string
+        // Convertion double to string
         std::ostringstream os;
         char ss[1024];
 
@@ -1188,7 +1037,6 @@ void compareCallback(const ros::TimerEvent&)
         sprintf(ss, "%0.3f", averageZ);
         std::string str_averageZ = ss;
 
-        // marker_volume.text = std::string("Volume: ") + str_volume + "\n";
         marker_volume.text = std::string("X: ") + str_averageX + std::string(" Y: ") + str_averageY + std::string(" Z: ") + str_averageZ + "\n" + std::string("Volume: ") + str_volume;
 
         marker_volume.scale.z = 0.05; // Size of Text
@@ -1202,8 +1050,6 @@ void compareCallback(const ros::TimerEvent&)
         ma_volumeText.markers.push_back(marker_volume);
 
         id_ma_volume++;
-
-
     }
 
 
@@ -1213,15 +1059,10 @@ void compareCallback(const ros::TimerEvent&)
        |    Missing Clusters                  |
        |________________________________      | */
 
-    // ----------------------------------------------------
-    // ----------- Center of Mass of Clusters -------------
-    // ----------------------------------------------------
 
-    // // Visualization Message Marker Array for the center of mass
-    // visualization_msgs::MarkerArray ma_centerofmass;
-    // int id_ma_centerofmass = 0;
+    // Center of Mass of Clusters
 
-
+    // For each Cluster
     for (size_t m = 0; m < selected_cluster_missing.size(); ++m)
     {
 
@@ -1229,13 +1070,11 @@ void compareCallback(const ros::TimerEvent&)
         double totalY = 0;
         double totalZ = 0;
 
+        // Iterates each cell inside a given Cluster
         for (size_t n = 0; n < selected_cluster_missing[m].size(); ++n)
         {
 
             size_t cluster_aux = selected_cluster_missing[m][n];
-
-            // double total_volume += vi[cluster_aux].getVolume();
-            // double totalX += vi[cluster_aux].getCenter().x() * vi[cluster_aux].getVolume();
 
             // Calculate the sum of X
             totalX += vi_missing[cluster_aux].getCenter().x();
@@ -1294,41 +1133,16 @@ void compareCallback(const ros::TimerEvent&)
 
     }
 
+    // ???Volume Calculation???
 
-    //Delete
-    //visualization_msgs::MarkerArray ma_deleteall;
-    //visualization_msgs::Marker marker;
-    //marker.header.stamp = ros::Time();
-    //marker.header.frame_id = octree_frame_id ;
-    //marker.ns = "clusters";
-    ////marker.action = visualization_msgs::Marker::DELETEALL;
-    //marker.action = 3;
-    //ma_deleteall.markers.push_back(marker);
-    //marker_pub_clusters->publish(ma_deleteall);
-
-    //ma_deleteall.markers[0].ns = "target_inconsistent";
-    //marker_pub_inconsistencies->publish(ma_deleteall);
-    //marker_pub_inconsistencies->publish(ma_deleteall);
-
-    //ros::Duration(0.05).sleep();
-
-    //marker_deleteall.ns = "target_inconsistent";
-    //ma_inconsistencies.markers.insert(ma_inconsistencies.markers.begin(), 0, marker_deleteall);
+    // Publish the Marker Arrays
     marker_pub_inconsistencies->publish(ma_inconsistencies);
     marker_pub_clusters->publish(ma_clusters);
-
     marker_pub->publish(ma);
-
     marker_pub_center_of_mass->publish(ma_centerofmass);
-
     marker_pub_volume->publish(ma_volumeText);
 
-    //publish colored point cloud
-    //double time_to_wait_for_point_cloud = 0.1;
-    //ros::Time t_point_cloud = ros::Time::now();
-    //ROS_INFO_STREAM("Waiting for a point_cloud2 on topic " << "/camera/depth_registered/points");
-    //sensor_msgs::PointCloud2::ConstPtr pcmsg = ros::topic::waitForMessage<sensor_msgs::PointCloud2>("/camera/depth_registered/points", *nh, ros::Duration(time_to_wait_for_point_cloud));
-    //ros::spinOnce();
+    // Paint the Point Cloud (if available) with the Inconsistencies information.
     if (!flg_received_point_cloud)
     {
         ROS_ERROR_STREAM("No point_cloud2 has been received yet");
@@ -1349,19 +1163,16 @@ void compareCallback(const ros::TimerEvent&)
                 size_t idx = selected_cluster[k][l];
                 std::vector<size_t> ltmp;
                 ltmp = vi[idx].pointsInPointCloud(pc);
-                //ROS_ERROR("There are %ld points in cube %ld of cluster %ld", lpoints.size(),l, k);
+
                 lpoints.insert(lpoints.end(), ltmp.begin(), ltmp.end());
             }
 
-            //ROS_ERROR("There are %ld points in cluster %ld", lpoints.size(), k);
             //change color of points to cluster color
             for (size_t i=0; i< lpoints.size(); ++i)
             {
                 cv::Scalar c = cluster_colors.cv_color(k);
                 int8_t r = c[2], g = c[1], b = c[0];
-                //int8_t r = 255, g = 0, b = 0;    // Example: Red color
                 uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
-                //p.rgb = *reinterpret_cast<float*>(&rgb);
                 pc->points[lpoints[i]].rgb = *reinterpret_cast<float*>(&rgb);;
                 pc2->points.push_back(pc->points[lpoints[i]]);
 
@@ -1385,8 +1196,8 @@ void compareCallback(const ros::TimerEvent&)
 
 void compareCallbackUsingRegions(const ros::TimerEvent&)
 {
-// MODE 2: COMPARE WITH REGIONS
-// Compare a Octomap with Regions previously defined.
+// MODE 2: COMPARE OCTOMAP WITH REGIONS
+// Compare a Octomap retrieved by a topic with Regions previously defined and check for inconsistencies.
 
     ros::Time t= ros::Time::now();
 
