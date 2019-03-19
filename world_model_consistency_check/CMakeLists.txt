@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
   octomap_msgs
   dynamic_reconfigure
   colormap
+  sensor_msgs
+  tf_conversions
   )
 
 find_package(octomap REQUIRED)
