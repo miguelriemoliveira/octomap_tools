@@ -31,6 +31,9 @@
 #kdev project files
 *.kdev4
 
+#vscode project/session files
+*.vscode
+
 #ogv movie files
 *.ogv
 

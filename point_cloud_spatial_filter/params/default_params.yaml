@@ -1,4 +1,4 @@
-{configure: true, fixed_frame_id: /world, point_cloud_in: /camera/depth_registered/points,
-  voxelize: true, x_max: 6.52659273147583, x_min: -6.439911365509033, x_voxel: 0.02,
-  y_max: 5.236978054046631, y_min: 4.885401248931885, y_voxel: 0.02, z_max: 2.2628488540649414,
-  z_min: 0.03864175081253052, z_voxel: 0.02}
+{configure: true, fixed_frame_id: /camera_link, point_cloud_in: /camera/depth_registered/points,
+  voxelize: false, x_max: 5.541397571563721, x_min: 2.393004894256592, x_voxel: 0.01,
+  y_max: 0.16095006465911865, y_min: -2.1683192253112793, y_voxel: 0.01, z_max: 0.7139512300491333,
+  z_min: -1.1468029022216797, z_voxel: 0.01}

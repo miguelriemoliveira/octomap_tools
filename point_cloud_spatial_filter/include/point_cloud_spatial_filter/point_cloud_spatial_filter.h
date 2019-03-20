@@ -439,7 +439,6 @@ class PerceptionPreprocessing
 
         void pointCloudCallback(const sensor_msgs::PointCloud2Ptr& pcmsg_in)
         {
-
             //STEP1: convert from ros msg to pcl (already removes RGB component because pc_in is pcl::PointXYZ)
             pcl::fromROSMsg(*pcmsg_in, *pc_in);
             //ROS_INFO_STREAM("Received a point cloud with stamp " << pcmsg_in->header.stamp.toSec() << " time now is " << ros::Time::now().toSec()); //some info
