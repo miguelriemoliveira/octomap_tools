@@ -85,6 +85,7 @@ class PerceptionPreprocessing
         double _x_voxel, _y_voxel, _z_voxel;
         bool _flg_configure;
         std::string _point_cloud_in;
+        std::string _path;
 
         string _fixed_frame_id;
         /* _________________________________
@@ -139,6 +140,9 @@ class PerceptionPreprocessing
             _p_priv_nh->param<std::string>("fixed_frame_id", _fixed_frame_id, "/camera_default_rgb_optical_frame");
             ROS_INFO_STREAM("_fixed_frame_id is " << _fixed_frame_id); 
 
+            string default_path = ros::package::getPath("point_cloud_spatial_filter");
+            _p_priv_nh->param<string>("params_path", _path, default_path);
+            
             //create point clouds
             pc_in = (boost::shared_ptr<PointCloud<T> >) new PointCloud<T>;
             pc_transformed = (boost::shared_ptr<PointCloud<T> >) new PointCloud<T>;
@@ -397,7 +401,7 @@ class PerceptionPreprocessing
                     switch (feedback->menu_entry_id)
                 case 1:
                         ROS_WARN("Dumping current configuration to file");
-                        string path = ros::package::getPath("point_cloud_spatial_filter");
+                        // string path = ros::package::getPath("point_cloud_spatial_filter");
 
                         _p_priv_nh->setParam("x_min", _x_min);
                         _p_priv_nh->setParam("y_min", _y_min);
@@ -405,7 +409,7 @@ class PerceptionPreprocessing
                         _p_priv_nh->setParam("x_max", _x_max);
                         _p_priv_nh->setParam("y_max", _y_max);
                         _p_priv_nh->setParam("z_max", _z_max);
-                        std::string cmd = "rosparam dump " + path + "/params/" + "default_params.yaml /point_cloud_filter -v";
+                        std::string cmd = "rosparam dump " + _path + "/params/" + "default_params.yaml /point_cloud_filter -v";
                         system(cmd.c_str());
 
                         //call(["rosparam dump three_points.yaml /ur5_with_asus_calibration -v",""], shell=True)

@@ -22,7 +22,9 @@ An example launch file:
         <param name="configure" value="$(arg configure)"/>
         <param name="voxelize" value="true"/>
         
-        <rosparam unless="$(arg configure)" file="$(find point_cloud_spatial_filter)/params/default_params.yaml" command="load" />    
+        <rosparam unless="$(arg configure)" file="$(find point_cloud_spatial_filter)/params/default_params.yaml" command="load" />
+
+        <param name="params_path" value="$(find *your_package*)"/>    
         
         <!-- If you want to overwrite the defaults  
         <param name="x_voxel" value="0.01"/>
