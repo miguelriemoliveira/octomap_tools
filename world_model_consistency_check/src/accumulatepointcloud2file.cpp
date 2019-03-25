@@ -20,6 +20,8 @@ pcl::PointCloud<PointT>::Ptr accumulated_cloud;
 tf::TransformListener* p_listener;
 boost::shared_ptr<ros::Publisher> pub;
 
+float voxel_size=0.05;
+
 void cloud_open_target(const sensor_msgs::PointCloud2ConstPtr& msg)
 {
   // declare variables
@@ -73,7 +75,8 @@ void cloud_open_target(const sensor_msgs::PointCloud2ConstPtr& msg)
   *tmp_cloud = *accumulated_cloud;
   grid.setInputCloud(tmp_cloud);
   // grid.setLeafSize (0.5f, 0.5f, 0.5f);
-  grid.setLeafSize(0.05f, 0.05f, 0.05f);
+  // grid.setLeafSize(0.05f, 0.05f, 0.05f);
+  grid.setLeafSize(voxel_size, voxel_size, voxel_size);
   grid.filter(*accumulated_cloud);
   ROS_INFO("Size of accumulated_cloud = %ld", accumulated_cloud->points.size());
 
@@ -94,6 +97,7 @@ int main(int argc, char** argv)
   ros::NodeHandle nh;
 
   ros::param::get("~filename", filename);
+  ros::param::get("~voxel_size", voxel_size);
 
   // initialize the transform listenerand wait a bit
   p_listener = (tf::TransformListener*)new tf::TransformListener;
