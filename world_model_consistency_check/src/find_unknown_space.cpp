@@ -39,7 +39,7 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
     double resolution = 0.05;
 
     PointCloud::Ptr pc_msg (new PointCloud);
-    pc_msg->header.frame_id = "/shelf";
+    pc_msg->header.frame_id = "/base_link";
     pc_msg->height = 1;
     pc_msg->width = 0;
 
@@ -65,7 +65,7 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
                     visualization_msgs::Marker m;
 
                     m.ns = "boxes";
-                    m.header.frame_id = "/shelf";
+                    m.header.frame_id = "/base_link";
                     m.header.stamp = t;
                     m.action = visualization_msgs::Marker::ADD;
                     //m.pose.orientation.w = 1.0;
@@ -90,7 +90,7 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
 
     visualization_msgs::Marker m;
     m.ns = "target_volume";
-    m.header.frame_id = "/shelf";
+    m.header.frame_id = "/base_link";
     m.header.stamp = t;
     m.action = visualization_msgs::Marker::ADD;
     //m.pose.orientation.w = 1.0;
@@ -154,7 +154,7 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
     ////visualization_msgs::Marker m;
 
     ////m.ns = "boxes";
-    ////m.header.frame_id = "/shelf";
+    ////m.header.frame_id = "/base_link";
     ////m.header.stamp = ros::Time::now();
     ////m.action = visualization_msgs::Marker::ADD;
     //////m.pose.orientation.w = 1.0;
@@ -207,7 +207,7 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
     //visualization_msgs::Marker m;
 
     //m.ns = "boxes";
-    //m.header.frame_id = "/shelf";
+    //m.header.frame_id = "/base_link";
     //m.header.stamp = ros::Time::now();
     //m.action = visualization_msgs::Marker::ADD;
     ////m.pose.orientation.w = 1.0;
@@ -251,6 +251,7 @@ int main (int argc, char** argv)
 
     ros::Duration(1).sleep(); // sleep for half a second
 
+    //TODO: check if octomap_binary is mnt better 
     ros::Subscriber sub = nh.subscribe("/octomap_full", 1, octomapCallback);
 
     pub = (boost::shared_ptr<ros::Publisher>) (new ros::Publisher);
