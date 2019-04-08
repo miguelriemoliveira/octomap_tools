@@ -134,8 +134,8 @@ include_directories(${catkin_INCLUDE_DIRS})
 add_executable(test_unknown_space src/test_unknown_space.cpp)
 target_link_libraries (test_unknown_space ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
 
-add_executable(publish_unknown_space src/publish_unknown_space.cpp)
-target_link_libraries (publish_unknown_space ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
+add_executable(octomap_bounding_box src/octomap_bounding_box.cpp)
+target_link_libraries (octomap_bounding_box ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
 
 add_executable(compare_octrees src/compare_octrees.cpp src/bounding_box.cpp)
 target_link_libraries (compare_octrees ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} bounding_box )

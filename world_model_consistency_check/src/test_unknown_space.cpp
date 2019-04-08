@@ -128,7 +128,7 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr &msg)
                     ma.markers.push_back(m);
                 }
             }
-    /*
+    
     visualization_msgs::Marker m;
     m.ns = "target_volume";
     m.header.frame_id = frame_id;
@@ -302,7 +302,7 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr &msg)
 
     // pc_msg->header.stamp = ros::Time::now();
     // pub->publish(pc_msg);
-*/
+
     marker_pub->publish(ma);
     
 }
