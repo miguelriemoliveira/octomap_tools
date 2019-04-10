@@ -22,6 +22,7 @@ using namespace octomap_msgs;
 
 AbstractOcTree *tree = NULL;
 OcTree *octree = NULL;
+OcTree *unknown_OcTree = NULL;
 ros::Publisher marker_pub;
 ros::Publisher cloud_pub;
 ros::Publisher unknown_map;
@@ -96,7 +97,15 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr &msg)
     // ROS_INFO("Total unknown centers: %d", num_of_unknown_cells);
 
     KeySet unknown_cells;
-    octomap::OcTree *unknown_OcTree = new OcTree(received_tree_resolution);
+    // octomap::OcTree *unknown_OcTree = new OcTree(received_tree_resolution);
+
+    if (unknown_OcTree != NULL)
+    {
+        delete (unknown_OcTree);
+    }
+
+    unknown_OcTree = new OcTree(received_tree_resolution);
+
     // unknown_OcTree->setResolution(resolution);
 
     for (point3d_list::iterator it = unknown_centers.begin(); it != unknown_centers.end(); ++it)
