@@ -11,7 +11,7 @@
 #include <pcl/point_types.h>
 #include <pcl_ros/point_cloud.h>
 
-#include <octomap_msgs/GetOctomap.h>
+// #include <octomap_msgs/GetOctomap.h>
 
 #include <octomap_ros/conversions.h>
 #include <octomap/OcTreeKey.h>
@@ -24,6 +24,7 @@ AbstractOcTree *tree = NULL;
 OcTree *octree = NULL;
 ros::Publisher marker_pub;
 ros::Publisher cloud_pub;
+ros::Publisher unknown_map;
 
 void octomapCallback(const octomap_msgs::Octomap::ConstPtr &msg)
 {
@@ -278,6 +279,15 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr &msg)
     marker_pub.publish(unknown_nodes);
     marker_pub.publish(free_nodes);
     marker_pub.publish(occupied_nodes);
+
+    Octomap map;
+    map.header.frame_id = frame_id;
+    map.header.stamp = t;
+
+    if (octomap_msgs::fullMapToMsg(*unknown_OcTree, map))
+    {
+        unknown_map.publish(map);
+    }
 }
 
 int main(int argc, char **argv)
@@ -294,6 +304,7 @@ int main(int argc, char **argv)
     marker_pub = nh.advertise<visualization_msgs::MarkerArray>("/cells_vis_array", 10);
 
     cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("/unknown_pc", 10);
+    unknown_map = nh.advertise<octomap_msgs::Octomap>("/unknown_full_map", 10);
 
     ros::Rate loop_rate(rate);
 
