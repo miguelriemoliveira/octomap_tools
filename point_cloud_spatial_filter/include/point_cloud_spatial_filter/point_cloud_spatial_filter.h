@@ -80,7 +80,7 @@ class PerceptionPreprocessing
            |                                 |
            |           PARAMETERS			|
            |_________________________________| */
-        double _x_min, _x_max, _y_min, _y_max, _z_min, _z_max;
+        double _x_min, _x_max, _y_min, _y_max, _z_min, _z_max, _scale;
         bool _voxelize;
         double _x_voxel, _y_voxel, _z_voxel;
         bool _flg_configure, _flg_wireframe;
@@ -135,6 +135,7 @@ class PerceptionPreprocessing
             _p_priv_nh->param<double>("z_voxel", _z_voxel , 0.01);
             _p_priv_nh->param<bool>("configure", _flg_configure , false);
             _p_priv_nh->param<bool>("wireframe", _flg_wireframe , false);
+            _p_priv_nh->param<double>("scale", _scale , 1);
             ROS_INFO_STREAM("_flg_wireframe topic name is " << _flg_wireframe);
 
 
@@ -146,6 +147,21 @@ class PerceptionPreprocessing
 
             string default_path = ros::package::getPath("point_cloud_spatial_filter");
             _p_priv_nh->param<string>("params_path", _path, default_path);
+
+            if (_scale != 1) {
+                double _center_x = (_x_min + _x_max) / 2;
+                double _center_y = (_y_min + _y_max) / 2;
+                double _center_z = (_z_min + _z_max) / 2;
+
+                _x_min = _center_x + (_x_min - _center_x)*_scale;
+                _y_min = _center_y + (_y_min - _center_y)*_scale;
+                _z_min = _center_z + (_z_min - _center_z)*_scale;
+
+                _x_max = _center_x + (_x_max - _center_x)*_scale;
+                _y_max = _center_y + (_y_max - _center_y)*_scale;
+                _z_max = _center_z + (_z_max - _center_z)*_scale;
+            }
+            
             
             //create point clouds
             pc_in = (boost::shared_ptr<PointCloud<T> >) new PointCloud<T>;
