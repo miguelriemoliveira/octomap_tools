@@ -56,25 +56,25 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr &msg)
     color_unknown.r = 1.0;
     color_unknown.g = 0.6;
     color_unknown.b = 0.0;
-    color_unknown.a = 1.0;
+    color_unknown.a = 0.3;
 
     color_free.r = 0.0;
     color_free.g = 1.0;
     color_free.b = 0.0;
-    color_free.a = 1.0;
+    color_free.a = 0.3;
 
     color_occupied.r = 1.0;
     color_occupied.g = 0.0;
     color_occupied.b = 0.0;
     color_occupied.a = 1.0;
 
-    ros::param::get("~min_x", min.x());
-    ros::param::get("~min_y", min.y());
-    ros::param::get("~min_z", min.z());
+    ros::param::get("~" + ros::names::remap("min_x"), min.x());
+    ros::param::get("~" + ros::names::remap("min_y"), min.y());
+    ros::param::get("~" + ros::names::remap("min_z"), min.z());
 
-    ros::param::get("~max_x", max.x());
-    ros::param::get("~max_y", max.y());
-    ros::param::get("~max_z", max.z());
+    ros::param::get("~" + ros::names::remap("max_x"), max.x());
+    ros::param::get("~" + ros::names::remap("max_y"), max.y());
+    ros::param::get("~" + ros::names::remap("max_z"), max.z());
 
     //ros::param::get("~resolution", resolution);
     ros::param::get("~fixed_frame", frame_id);

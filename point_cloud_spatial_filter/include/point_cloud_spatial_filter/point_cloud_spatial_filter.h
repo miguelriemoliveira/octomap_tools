@@ -83,7 +83,7 @@ class PerceptionPreprocessing
         double _x_min, _x_max, _y_min, _y_max, _z_min, _z_max;
         bool _voxelize;
         double _x_voxel, _y_voxel, _z_voxel;
-        bool _flg_configure;
+        bool _flg_configure, _flg_wireframe;
         std::string _point_cloud_in;
         std::string _path;
 
@@ -134,6 +134,10 @@ class PerceptionPreprocessing
             _p_priv_nh->param<double>("y_voxel", _y_voxel , 0.01);
             _p_priv_nh->param<double>("z_voxel", _z_voxel , 0.01);
             _p_priv_nh->param<bool>("configure", _flg_configure , false);
+            _p_priv_nh->param<bool>("wireframe", _flg_wireframe , false);
+            ROS_INFO_STREAM("_flg_wireframe topic name is " << _flg_wireframe);
+
+
             _p_priv_nh->param<std::string>("point_cloud_in", _point_cloud_in , "camera_default/depth_registered/points");
             ROS_INFO_STREAM("_point_cloud_in topic name is " << _point_cloud_in);
 
@@ -176,6 +180,13 @@ class PerceptionPreprocessing
 
                 ROS_INFO_STREAM("Configuration mode is on");
             }
+            else if (_flg_wireframe == true)
+            {
+                //initialize the publisher
+                _p_marker_publisher = (boost::shared_ptr<Publisher>) new Publisher;
+                *_p_marker_publisher = _p_priv_nh->advertise<visualization_msgs::MarkerArray>("rviz/filter", 100);
+            }
+            
             else
             {
                 ROS_INFO_STREAM("Configuration mode is off");
@@ -498,7 +509,7 @@ class PerceptionPreprocessing
             _p_pc_publisher->publish(msg_out);
 
 
-            if (_flg_configure==true)
+            if (_flg_configure==true || _flg_wireframe == true)
             {
                 publishVisualizationMarkers();
             }
