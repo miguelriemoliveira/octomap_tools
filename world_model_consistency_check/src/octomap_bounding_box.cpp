@@ -26,6 +26,145 @@ OcTree *unknown_OcTree = NULL;
 ros::Publisher marker_pub;
 ros::Publisher cloud_pub;
 ros::Publisher unknown_map;
+ros::Publisher wireframe_pub;
+
+point3d min_p, max_p;
+
+std_msgs::ColorRGBA color_unknown, color_free, color_occupied;
+
+string frame_id;
+
+void wireframeCallback()
+{
+    visualization_msgs::MarkerArray marker_array;
+    geometry_msgs::Point p;
+
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = frame_id;
+    marker.ns = "wireframe";
+    marker.id = 0;
+    marker.type = visualization_msgs::Marker::LINE_LIST;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.lifetime = ros::Duration(0);
+
+    marker.pose.position.x = (min_p.x() + max_p.x()) / 2;
+    marker.pose.position.y = (min_p.y() + max_p.y()) / 2;
+    marker.pose.position.z = (min_p.z() + max_p.z()) / 2;
+
+    marker.scale.x = 0.01; //width of the line
+
+    double x = fabs(min_p.x() - marker.pose.position.x);
+    double y = fabs(min_p.y() - marker.pose.position.y);
+    double z = fabs(min_p.z() - marker.pose.position.z);
+
+    marker.color.r = 0.0;
+    marker.color.g = 0.0;
+    marker.color.b = 0.7;
+    marker.color.a = 1.0;
+
+    p.x = x;
+    p.y = y;
+    p.z = z;
+    marker.points.push_back(p);
+    p.x = -x;
+    p.y = y;
+    p.z = z;
+    marker.points.push_back(p);
+    p.x = x;
+    p.y = y;
+    p.z = -z;
+    marker.points.push_back(p);
+    p.x = -x;
+    p.y = y;
+    p.z = -z;
+    marker.points.push_back(p);
+    p.x = x;
+    p.y = y;
+    p.z = -z;
+    marker.points.push_back(p);
+    p.x = x;
+    p.y = y;
+    p.z = z;
+    marker.points.push_back(p);
+    p.x = -x;
+    p.y = y;
+    p.z = -z;
+    marker.points.push_back(p);
+    p.x = -x;
+    p.y = y;
+    p.z = z;
+    marker.points.push_back(p);
+
+    p.x = x;
+    p.y = -y;
+    p.z = z;
+    marker.points.push_back(p);
+    p.x = -x;
+    p.y = -y;
+    p.z = z;
+    marker.points.push_back(p);
+    p.x = x;
+    p.y = -y;
+    p.z = -z;
+    marker.points.push_back(p);
+    p.x = -x;
+    p.y = -y;
+    p.z = -z;
+    marker.points.push_back(p);
+    p.x = x;
+    p.y = -y;
+    p.z = -z;
+    marker.points.push_back(p);
+    p.x = x;
+    p.y = -y;
+    p.z = z;
+    marker.points.push_back(p);
+    p.x = -x;
+    p.y = -y;
+    p.z = -z;
+    marker.points.push_back(p);
+    p.x = -x;
+    p.y = -y;
+    p.z = z;
+    marker.points.push_back(p);
+
+    p.x = x;
+    p.y = y;
+    p.z = z;
+    marker.points.push_back(p);
+    p.x = x;
+    p.y = -y;
+    p.z = z;
+    marker.points.push_back(p);
+    p.x = x;
+    p.y = y;
+    p.z = -z;
+    marker.points.push_back(p);
+    p.x = x;
+    p.y = -y;
+    p.z = -z;
+    marker.points.push_back(p);
+    p.x = -x;
+    p.y = y;
+    p.z = z;
+    marker.points.push_back(p);
+    p.x = -x;
+    p.y = -y;
+    p.z = z;
+    marker.points.push_back(p);
+    p.x = -x;
+    p.y = y;
+    p.z = -z;
+    marker.points.push_back(p);
+    p.x = -x;
+    p.y = -y;
+    p.z = -z;
+    marker.points.push_back(p);
+
+    marker_array.markers.push_back(marker);
+
+    wireframe_pub.publish(marker_array);
+}
 
 void octomapCallback(const octomap_msgs::Octomap::ConstPtr &msg)
 {
@@ -39,52 +178,52 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr &msg)
     tree = msgToMap(*msg);
     octree = dynamic_cast<OcTree *>(tree);
 
-    std_msgs::ColorRGBA color_unknown, color_free, color_occupied;
-    string frame_id = "/base_link";
+    // std_msgs::ColorRGBA color_unknown, color_free, color_occupied;
+    // string frame_id = "/base_link";
     ros::Time t = ros::Time::now();
 
-    point3d min;
-    min.x() = -0.5;
-    min.y() = -0.5;
-    min.z() = -0.5;
+    // point3d min;
+    // min.x() = -0.5;
+    // min.y() = -0.5;
+    // min.z() = -0.5;
 
-    point3d max;
-    max.x() = 0.5;
-    max.y() = 0.5;
-    max.z() = 0.5;
+    // // point3d max;
+    // max.x() = 0.5;
+    // max.y() = 0.5;
+    // max.z() = 0.5;
 
-    color_unknown.r = 1.0;
-    color_unknown.g = 0.6;
-    color_unknown.b = 0.0;
-    color_unknown.a = 0.3;
+    // color_unknown.r = 1.0;
+    // color_unknown.g = 0.6;
+    // color_unknown.b = 0.0;
+    // color_unknown.a = 0.3;
 
-    color_free.r = 0.0;
-    color_free.g = 1.0;
-    color_free.b = 0.0;
-    color_free.a = 0.3;
+    // color_free.r = 0.0;
+    // color_free.g = 1.0;
+    // color_free.b = 0.0;
+    // color_free.a = 0.3;
 
-    color_occupied.r = 1.0;
-    color_occupied.g = 0.0;
-    color_occupied.b = 0.0;
-    color_occupied.a = 1.0;
+    // color_occupied.r = 1.0;
+    // color_occupied.g = 0.0;
+    // color_occupied.b = 0.0;
+    // color_occupied.a = 1.0;
 
-    ros::param::get("~" + ros::names::remap("min_x"), min.x());
-    ros::param::get("~" + ros::names::remap("min_y"), min.y());
-    ros::param::get("~" + ros::names::remap("min_z"), min.z());
+    // ros::param::get("~" + ros::names::remap("min_x"), min.x());
+    // ros::param::get("~" + ros::names::remap("min_y"), min.y());
+    // ros::param::get("~" + ros::names::remap("min_z"), min.z());
 
-    ros::param::get("~" + ros::names::remap("max_x"), max.x());
-    ros::param::get("~" + ros::names::remap("max_y"), max.y());
-    ros::param::get("~" + ros::names::remap("max_z"), max.z());
+    // ros::param::get("~" + ros::names::remap("max_x"), max.x());
+    // ros::param::get("~" + ros::names::remap("max_y"), max.y());
+    // ros::param::get("~" + ros::names::remap("max_z"), max.z());
 
-    //ros::param::get("~resolution", resolution);
-    ros::param::get("~fixed_frame", frame_id);
+    // //ros::param::get("~resolution", resolution);
+    // ros::param::get("~fixed_frame", frame_id);
 
     visualization_msgs::MarkerArray unknown_nodes, free_nodes, occupied_nodes;
     point3d_list unknown_centers, known_centers;
     pcl::PointCloud<pcl::PointXYZRGBA> unknown_pc;
     sensor_msgs::PointCloud2 unknown_cloud;
 
-    octree->getUnknownLeafCenters(unknown_centers, min, max, 0);
+    octree->getUnknownLeafCenters(unknown_centers, min_p, max_p, 0);
 
     int received_tree_depth = octree->getTreeDepth();
     double received_tree_resolution = octree->getResolution();
@@ -193,7 +332,7 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr &msg)
         }
     }
 
-    for (OcTree::leaf_bbx_iterator it = octree->begin_leafs_bbx(min, max), end = octree->end_leafs_bbx(); it != end; it++)
+    for (OcTree::leaf_bbx_iterator it = octree->begin_leafs_bbx(min_p, max_p), end = octree->end_leafs_bbx(); it != end; it++)
     {
         if (!octree->isNodeOccupied(*it))
         {
@@ -283,6 +422,8 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr &msg)
         }
     }
 
+    wireframeCallback();
+
     cloud_pub.publish(unknown_cloud);
 
     marker_pub.publish(unknown_nodes);
@@ -304,8 +445,44 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "octomap_bounding_box_node");
     ros::NodeHandle nh;
 
+    min_p.x() = -0.5;
+    min_p.y() = -0.5;
+    min_p.z() = -0.5;
+
+    max_p.x() = 0.5;
+    max_p.y() = 0.5;
+    max_p.z() = 0.5;
+
+    color_unknown.r = 1.0;
+    color_unknown.g = 0.6;
+    color_unknown.b = 0.0;
+    color_unknown.a = 0.3;
+
+    color_free.r = 0.0;
+    color_free.g = 1.0;
+    color_free.b = 0.0;
+    color_free.a = 0.3;
+
+    color_occupied.r = 1.0;
+    color_occupied.g = 0.0;
+    color_occupied.b = 0.0;
+    color_occupied.a = 1.0;
+
+    frame_id = "/base_link";
+
     double rate = 1;
     ros::param::get("~rate", rate);
+
+    ros::param::get("~" + ros::names::remap("min_x"), min_p.x());
+    ros::param::get("~" + ros::names::remap("min_y"), min_p.y());
+    ros::param::get("~" + ros::names::remap("min_z"), min_p.z());
+
+    ros::param::get("~" + ros::names::remap("max_x"), max_p.x());
+    ros::param::get("~" + ros::names::remap("max_y"), max_p.y());
+    ros::param::get("~" + ros::names::remap("max_z"), max_p.z());
+
+    //ros::param::get("~resolution", resolution);
+    ros::param::get("~fixed_frame", frame_id);
 
     ros::Duration(0.5).sleep();
 
@@ -314,6 +491,8 @@ int main(int argc, char **argv)
 
     cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("/unknown_pc", 10);
     unknown_map = nh.advertise<octomap_msgs::Octomap>("/unknown_full_map", 10);
+
+    wireframe_pub = nh.advertise<visualization_msgs::MarkerArray>("/octomap_boundingBox", 100);
 
     ros::Rate loop_rate(rate);
 
