@@ -18,18 +18,13 @@ To launch this node implement in your launch file:
 </node>
  ```
 
-## Bounding Box
+## Octomap Bounding Box
 
-## Compare Octrees
+This node subscribes the "/octomap_full" topic from Octomap Server, then publishes:
 
-## File 2 OctoMap Msg
+    - visualization_msgs::MarkerArray with free, occupied and unknown voxels (cubes) for visualization
+    - sensor_msgs::PointCloud2 with the centers of the unknown voxels 
+    - octomap_msgs::Octomap where the voxels marked as free are actually unknown in the original Octomap
+    - visualization_msgs::MarkerArray containing the wireframe of the region
 
-## Find Unknown Space
-
-## OctoMap Msg 2 File
-
-## PCD 2 Point Cloud
-
-## Point Cloud 2 File
-
-## Test Unknown Space
+![Octomap BoundingBox](../docs/BBoxComp_4.png)
