@@ -70,8 +70,8 @@ class PerceptionPreprocessing
         boost::shared_ptr<PointCloud<T> > pc_filtered;
         boost::shared_ptr<PointCloud<T> > pc_downsampled;
         sensor_msgs::PointCloud2 msg_out;
-        boost::shared_ptr<ConditionAnd<T> > _range_cond;
-        boost::shared_ptr<ConditionAnd<T> > _range_cond1;
+        ConditionAnd<T>::Ptr _range_cond;
+        ConditionAnd<T>::Ptr _range_cond1;
 
         boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
         interactive_markers::MenuHandler menu_handler;
@@ -453,18 +453,16 @@ class PerceptionPreprocessing
 
         void setConditionFilter(void)
         {
-            _range_cond.reset();	
-            _range_cond = (boost::shared_ptr<ConditionAnd<T> >) new ConditionAnd<T>();
-            _range_cond->addComparison (boost::shared_ptr< const FieldComparison<T> > (new FieldComparison<T> ("x", ComparisonOps::GT, _x_min)));
-            _range_cond->addComparison (boost::shared_ptr< const FieldComparison<T> > (new FieldComparison<T> ("x", ComparisonOps::LT, _x_max)));
-            _range_cond->addComparison (boost::shared_ptr< const FieldComparison<T> > (new FieldComparison<T> ("y", ComparisonOps::GT, _y_min)));
-            _range_cond->addComparison (boost::shared_ptr< const FieldComparison<T> > (new FieldComparison<T> ("y", ComparisonOps::LT, _y_max)));
-            _range_cond->addComparison (boost::shared_ptr< const FieldComparison<T> > (new FieldComparison<T> ("z", ComparisonOps::GT, _z_min)));
-            _range_cond->addComparison (boost::shared_ptr< const FieldComparison<T> > (new FieldComparison<T> ("z", ComparisonOps::LT, _z_max)));
+            _range_cond.reset(new ConditionAnd<T>());	
+            _range_cond->addComparison (pcl::FieldComparison<T>::ConstPtr (new pcl::FieldComparison<T> ("x", pcl::ComparisonOps::GT, _x_min)));
+            _range_cond->addComparison (pcl::FieldComparison<T>::ConstPtr (new pcl::FieldComparison<T> ("x", pcl::ComparisonOps::LT, _x_max)));
+            _range_cond->addComparison (pcl::FieldComparison<T>::ConstPtr (new pcl::FieldComparison<T> ("y", pcl::ComparisonOps::GT, _y_min)));
+            _range_cond->addComparison (pcl::FieldComparison<T>::ConstPtr (new pcl::FieldComparison<T> ("y", pcl::ComparisonOps::LT, _y_max)));
+            _range_cond->addComparison (pcl::FieldComparison<T>::ConstPtr (new pcl::FieldComparison<T> ("z", pcl::ComparisonOps::GT, _z_min)));
+            _range_cond->addComparison (pcl::FieldComparison<T>::ConstPtr (new pcl::FieldComparison<T> ("z", pcl::ComparisonOps::LT, _z_max)));
 
-            _range_cond1.reset();	
-            _range_cond1 = (boost::shared_ptr<ConditionAnd<T> >) new ConditionAnd<T>();
-            _range_cond1->addComparison (boost::shared_ptr< const FieldComparison<T> > (new FieldComparison<T> ("z", ComparisonOps::GT, 0.55)));
+            _range_cond1.reset(new ConditionAnd<T>());	
+            _range_cond1->addComparison (pcl::FieldComparison<T>::ConstPtr (new pcl::FieldComparison<T> ("z", pcl::ComparisonOps::GT, 0.55)));
 
         }
 
@@ -493,7 +491,8 @@ class PerceptionPreprocessing
             pc_transformed->header.frame_id = _fixed_frame_id;
 
             //STEP3: remove points outside the box
-            ConditionalRemoval<T> condrem(_range_cond);
+            ConditionalRemoval<T> condrem;
+            condrem.setCondition(_range_cond);
             condrem.setInputCloud(pc_transformed);
             condrem.setKeepOrganized(false);
             condrem.filter(*pc_filtered);
